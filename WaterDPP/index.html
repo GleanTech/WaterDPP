@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>循環玻璃瓶裝水數位產品護照管理系統 V06.03 (20260814PM)</title>
+    <title>循環玻璃瓶裝水數位產品護照管理系統 V_dp_08 (20260817)</title>
     <!-- 引入 QR Code、SheetJS 與 Chart.js 函式庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -103,8 +103,8 @@
     <!-- 側邊欄 -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <h2>🍃 循環玻璃瓶裝水<br>數位產品護照管理系統 V06.03</h2>
-            <div style="margin-top: 8px; font-size: 11px; color: var(--text-sub);">修訂版本時間：20260814PM</div>
+            <h2>🍃 循環玻璃瓶裝水<br>數位產品護照管理系統 V_dp_08</h2>
+            <div style="margin-top: 8px; font-size: 11px; color: var(--text-sub);">修訂版本時間：V_dp_08 (20260817)</div>
             <div style="margin-top: 10px;">
                 <label style="font-size: 12px; color: var(--text-sub);">當前切換身份：</label>
                 <select id="userRoleSelect" class="form-control" style="margin-top: 4px;" onchange="changeRole()">
@@ -133,7 +133,7 @@
 
         <!-- 頁面 1：系統總覽 -->
         <section id="page1" class="page active">
-            <div class="page-header"><h1>頁面一：系統總覽 (Dashboard V06.03)</h1></div>
+            <div class="page-header"><h1>頁面一：系統總覽 (Dashboard V_dp_08)</h1></div>
             <div class="card">
                 <div class="card-title">永續數據與展示資料</div>
                 <button class="btn btn-success" onclick="loadDemoData10000()">⚡ 載入系統預設資料 (10,000筆模擬數據)</button>
@@ -182,7 +182,7 @@
             </div>
         </section>
 
-        <!-- 頁面 3：DPP 管理 (V06.03 新增 ESG 碳排放設定) -->
+        <!-- 頁面 3：DPP 管理 -->
         <section id="page3" class="page">
             <div class="page-header">
                 <h1>頁面三：產品 DPP 管理</h1>
@@ -198,9 +198,9 @@
             </div>
         </section>
 
-        <!-- 頁面 4：產品追溯管理 (V06.03 批量勾選與一次性狀態修改) -->
+        <!-- 頁面 4：產品追溯管理 -->
         <section id="page4" class="page">
-            <div class="page-header"><h1>頁面四：產品追溯管理 (V06.03)</h1></div>
+            <div class="page-header"><h1>頁面四：產品追溯管理 (V_dp_08)</h1></div>
             
             <div class="card" style="padding: 16px;">
                 <div class="summary-banner" style="margin-bottom:10px;">
@@ -227,7 +227,6 @@
                     <button class="btn" onclick="searchSerial()">🔍 搜尋</button>
                     <button class="btn btn-secondary" onclick="clearSerialSearch()">🧹 清除搜尋</button>
                     
-                    <!-- V06.03 新增需求 1：批量勾選修改按鈕與計數 -->
                     <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
                         <span style="font-size:13px; font-weight:600; color:var(--primary-blue);" id="selectedCountText">已勾選 0 筆</span>
                         <button class="btn btn-warning" onclick="openBatchStatusModal()">☑️ 批次修改勾選項目狀態</button>
@@ -238,7 +237,6 @@
                     <table id="serialTable">
                         <thead>
                             <tr>
-                                <!-- V06.03 勾選框 -->
                                 <th style="width:38px; text-align:center;">
                                     <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAllCurrentPage(this)">
                                 </th>
@@ -340,9 +338,9 @@
             </div>
         </section>
 
-        <!-- 頁面 6：消費者護照查詢 (V06.03 新增 ESG 碳足跡展示) -->
+        <!-- 頁面 6：消費者護照查詢 -->
         <section id="page6" class="page">
-            <div class="page-header"><h1>頁面六：消費者護照查詢 (Front)</h1></div>
+            <div class="page-header"><h1>頁面六：消費者護照查詢 (V_dp_08)</h1></div>
             <div class="card" style="max-width: 520px; margin: auto; text-align: center;">
                 <h2>🍾 數位產品護照 (DPP)</h2>
                 <input type="text" id="frontQueryInput" class="form-control" value="A00001" style="text-align:center; margin-bottom: 12px;">
@@ -359,7 +357,6 @@
                     <p><strong>歷史批次紀錄：</strong> <span id="dppBatch"></span></p>
                     <p><strong>備註標記：</strong> <span id="dppRemark"></span></p>
 
-                    <!-- V06.03 碳足跡連動展示預留 -->
                     <div class="esg-box">
                         <h4>🌱 ESG 產品碳足跡履歷</h4>
                         <p style="margin:4px 0; font-size:13px;"><strong>全生命週期總碳排放：</strong> <span id="dppEsgTotal" style="font-size:16px; font-weight:700; color:#15803d;">0.00</span> kgCO₂e / 瓶</p>
@@ -434,7 +431,7 @@
         </div>
     </div>
 
-    <!-- V06.03 新增：批次勾選狀態修改 Modal -->
+    <!-- 批次勾選狀態修改 Modal -->
     <div id="batchStatusModalBackdrop" class="modal-backdrop">
         <div class="modal">
             <div class="modal-header">☑️ 批次修改已勾選項目狀態</div>
@@ -479,7 +476,7 @@
         </div>
     </div>
 
-    <!-- V06.03 新增：ESG 碳排放數據設定 Modal -->
+    <!-- ESG 碳排放數據設定 Modal -->
     <div id="esgModalBackdrop" class="modal-backdrop">
         <div class="modal">
             <div class="modal-header">🌱 ESG 碳排放環節數據設定</div>
@@ -538,7 +535,7 @@
     <input type="file" id="batchReportFileInput" style="display:none;" accept=".xlsx, .xls" onchange="handleBatchReportUpload(event)">
 
     <script>
-        const CURRENT_TIMESTAMP = "20260814PM";
+        const CURRENT_TIMESTAMP = "20260817";
         const PAGE_SIZE = 200;
 
         const statusToAreaMap = {
@@ -594,7 +591,6 @@
         let currentRole = "Admin";
         let activeUploadBatchNo = "";
 
-        // V06.03 勾選狀態集合 (儲存序列號 SN)
         let selectedSNSet = new Set();
 
         let filteredSerials = [];
@@ -602,13 +598,17 @@
         let totalPages = 1;
         let pieChartInstance = null;
 
+        let sortState = {
+            serials: { col: -1, asc: true },
+            batches: { col: -1, asc: true }
+        };
+
         let db = {
             bottles: [
                 ["BOT-330ML-STD", "330ml 輕量標準玻璃瓶", 330, 250, "60mm x 210mm", 25, "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=100"],
                 ["BOT-500ML-STD", "500ml 經典特厚玻璃瓶", 500, 380, "70mm x 240mm", 30, "https://images.unsplash.com/photo-1589365278144-c9e705f843ba?w=100"],
                 ["BOT-750ML-PRE", "750ml 頂級餐飲氣泡瓶", 750, 520, "82mm x 295mm", 20, "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=100"]
             ],
-            // V06.03 產品新增 ESG 欄位預設值 [raw, fill, log, rec, total]
             products: [
                 ["04712345678901", "天然氣泡微礦泉水 500ml", "BOT-500ML-STD", "雪山山脈天然湧泉", "微氣泡口感，富含天然偏矽酸", "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=100", { raw: 0.45, fill: 0.12, log: 0.18, rec: 0.05, total: 0.80 }],
                 ["04712345678925", "頂級佐餐氣泡水 750ml", "BOT-750ML-PRE", "中央山脈高海拔水源", "極致細緻氣泡，佐餐首選", "https://images.unsplash.com/photo-1589365278144-c9e705f843ba?w=100", { raw: 0.60, fill: 0.15, log: 0.22, rec: 0.08, total: 1.05 }]
@@ -676,16 +676,15 @@
         function loadDemoData10000() {
             initSerials10000();
             renderAll();
-            alert("已成功升級並載入 10,000 筆 V06.03 模擬數據！");
+            alert("已成功升級並載入 10,000 筆 V_dp_08 模擬數據！");
         }
 
         function switchPage(pageId, evt) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.sidebar-nav li').forEach(li => li.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
-            
-            const targetNav = evt ? evt.currentTarget : document.getElementById('nav-' + pageId);
-            if(targetNav) targetNav.classList.add('active');
+            const navId = 'nav-' + pageId;
+            document.getElementById(navId).classList.add('active');
         }
 
         function calculateStatistics() {
@@ -795,7 +794,6 @@
                 </tr>
             `).join('');
 
-            // V06.03 頁面三渲染 ESG 數據欄位與按鈕
             document.querySelector('#productTable tbody').innerHTML = db.products.map((p, idx) => {
                 let esgObj = p[6] || { total: 0.80 };
                 return `
@@ -855,7 +853,6 @@
 
                 return `
                 <tr>
-                    <!-- V06.03 單列勾選框 -->
                     <td style="text-align:center;">
                         <input type="checkbox" class="sn-checkbox" data-sn="${sn}" ${isChecked} onchange="toggleSelectSN('${sn}', this.checked)">
                     </td>
@@ -887,7 +884,6 @@
             updateSelectAllCheckboxState(pageData);
         }
 
-        // V06.03 勾選控制邏輯
         function toggleSelectSN(sn, isChecked) {
             if (isChecked) selectedSNSet.add(sn);
             else selectedSNSet.delete(sn);
@@ -923,7 +919,6 @@
             document.getElementById('selectedCountText').innerText = `已勾選 ${count.toLocaleString()} 筆`;
         }
 
-        // V06.03 批次修改狀態 Modal 相關邏輯
         function openBatchStatusModal() {
             if (selectedSNSet.size === 0) {
                 alert("請先在下方表格中勾選至少一筆項目！");
@@ -1122,7 +1117,6 @@
             alert("序列號狀態與可用物料標記已更新！");
         }
 
-        // V06.03 新增：ESG 碳排放 Modal 邏輯
         let editingEsgProductIndex = -1;
         function openEsgModal(prodIndex) {
             editingEsgProductIndex = prodIndex;
@@ -1169,7 +1163,8 @@
 
         function generateDigitalLinkQR(gtin, serial) {
             currentActiveSerial = serial;
-            const digitalLinkUrl = `https://dpp.example.com/01/${gtin}/21/${serial}`;
+            // V_dp_08 修改：Digital Link 網址改為指定位置
+            const digitalLinkUrl = `https://gleantech.github.io/WaterDPP/WaterDPP/01/${gtin}/21/${serial}`;
             const container = document.getElementById('qrCodeContainer');
             container.innerHTML = '';
 
@@ -1490,7 +1485,6 @@
             renderAll();
         }
 
-        // V06.03 消費者護照連動 ESG 展示
         function queryDPP() {
             const sn = document.getElementById('frontQueryInput').value.trim().toUpperCase();
             const item = db.serials.find(s => s[1] === sn || s[0].includes(sn));
@@ -1506,7 +1500,6 @@
                 document.getElementById('dppBatch').innerText = item[7] || "BATCH-20260801";
                 document.getElementById('dppRemark').innerText = item[8] || "無特殊標註";
 
-                // 展示連動 ESG 碳足跡數據
                 const esg = (prod && prod[6]) ? prod[6] : { raw: 0.45, fill: 0.12, log: 0.18, rec: 0.05, total: 0.80 };
                 document.getElementById('dppEsgTotal').innerText = (esg.total || 0).toFixed(2);
                 document.getElementById('dppEsgRaw').innerText = (esg.raw || 0).toFixed(2);
@@ -1517,6 +1510,32 @@
                 document.getElementById('dppResult').style.display = 'block';
             } else {
                 alert("未找到該序列號之 DPP 紀錄！");
+            }
+        }
+
+        function compareVal(a, b, dir) {
+            if (typeof a === 'number' && typeof b === 'number') return (a - b) * dir;
+            if (typeof a === 'boolean' && typeof b === 'boolean') return ((a ? 1 : 0) - (b ? 1 : 0)) * dir;
+            return String(a ?? '').localeCompare(String(b ?? ''), 'zh-Hant') * dir;
+        }
+
+        function sortTable(type, colIndex) {
+            const state = sortState[type];
+            if (state.col === colIndex) {
+                state.asc = !state.asc;
+            } else {
+                state.col = colIndex;
+                state.asc = true;
+            }
+            const dir = state.asc ? 1 : -1;
+
+            if (type === 'serials') {
+                filteredSerials.sort((a, b) => compareVal(a[colIndex], b[colIndex], dir));
+                currentPage = 1;
+                renderPagedSerialsTable();
+            } else if (type === 'batches') {
+                db.batches.sort((a, b) => compareVal(a[colIndex], b[colIndex], dir));
+                renderBatchTable(db.batches);
             }
         }
 
