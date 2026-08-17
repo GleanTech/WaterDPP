@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>循環玻璃瓶裝水數位產品護照管理系統 V06.03 (20260814PM)</title>
+    <!-- 引入 QR Code、SheetJS 與 Chart.js 函式庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f2f7f5;
+            --sidebar-bg: rgba(235, 245, 240, 0.85);
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --primary-blue: #007aff;
+            --eco-green: #34c759;
+            --text-main: #1c1c1e;
+            --text-sub: #8e8e93;
+            --border-light: rgba(60, 60, 67, 0.12);
+            --ios-radius: 14px;
+            --ios-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            --sidebar-width: 260px;
+        }
+
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+        .sidebar { width: var(--sidebar-width); background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-right: 1px solid var(--border-light); display: flex; flex-direction: column; flex-shrink: 0; z-index: 10; }
+        .sidebar-header { padding: 24px 20px 16px; }
+        .sidebar-header h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text-main); line-height: 1.4; }
+        
+        .sidebar-nav ul { list-style: none; padding: 0 10px; margin: 0; }
+        .sidebar-nav li { display: flex; align-items: center; padding: 12px 14px; margin-bottom: 4px; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; font-size: 14px; font-weight: 500; color: #3a3a3c; }
+        .sidebar-nav li:hover { background-color: rgba(52, 199, 89, 0.12); }
+        .sidebar-nav li.active { background-color: var(--eco-green); color: #ffffff; font-weight: 600; box-shadow: 0 2px 8px rgba(52, 199, 89, 0.3); }
+        .sidebar-nav .icon { margin-right: 12px; font-size: 16px; }
+
+        .main-content { flex: 1; overflow-y: auto; padding: 30px; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-header h1 { margin: 0; font-size: 24px; font-weight: 700; }
+
+        .card { background: var(--card-bg); backdrop-filter: blur(10px); border-radius: var(--ios-radius); padding: 22px; margin-bottom: 22px; box-shadow: var(--ios-shadow); border: 1px solid var(--border-light); }
+        .card-title { font-size: 17px; font-weight: 600; margin-top: 0; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+
+        .btn { background-color: var(--primary-blue); color: #ffffff; border: none; padding: 8px 12px; font-size: 13px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 4px; }
+        .btn:hover { opacity: 0.88; }
+        .btn:disabled, .btn-disabled { background-color: #d1d1d6 !important; color: #8e8e93 !important; cursor: not-allowed !important; opacity: 0.7; }
+        .btn-success { background-color: var(--eco-green); }
+        .btn-secondary { background-color: #8e8e93; }
+        .btn-danger { background-color: #ff3b30; }
+        .btn-warning { background-color: #ff9500; color: #fff; }
+
+        .form-control { width: 100%; padding: 8px 12px; border: 1px solid #c7c7cc; border-radius: 8px; font-size: 13px; background-color: rgba(255, 255, 255, 0.9); outline: none; }
+        .form-control:focus { border-color: var(--primary-blue); }
+
+        .table-container { overflow-x: auto; max-height: 580px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border-light); vertical-align: middle; white-space: normal; word-break: break-word; }
+        th { position: sticky; top: 0; background-color: rgba(242, 242, 247, 0.95); color: var(--text-sub); font-weight: 600; font-size: 12px; text-transform: uppercase; z-index: 2; white-space: nowrap; }
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { color: var(--primary-blue); }
+        tbody tr:hover { background-color: rgba(235, 245, 240, 0.4); }
+
+        .img-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-light); }
+        .badge-status { padding: 4px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; display: inline-block; white-space: nowrap; }
+
+        .pagination-container { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; margin-top: 10px; border-top: 1px solid var(--border-light); font-size: 13px; flex-wrap: wrap; gap: 10px; }
+        .pagination-nav { display: flex; gap: 4px; align-items: center; }
+        .page-btn { padding: 5px 10px; border: 1px solid #c7c7cc; border-radius: 6px; background: #fff; cursor: pointer; font-size: 12px; }
+        .page-btn:hover { background-color: #e5e5ea; }
+        .page-btn.active { background-color: var(--primary-blue); color: #fff; border-color: var(--primary-blue); font-weight: 600; }
+
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 15px; }
+        .status-card { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-light); background: #fff; font-size: 11.5px; display: flex; flex-direction: column; gap: 2px; }
+        .status-card .title { font-weight: 600; color: var(--text-sub); }
+        .status-card .num { font-size: 15px; font-weight: 700; color: var(--text-main); }
+
+        .summary-banner { display: flex; gap: 15px; margin-bottom: 15px; background: #ffffff; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border-light); }
+        .summary-item { flex: 1; text-align: center; }
+        .summary-item .label { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; }
+        .summary-item .val { font-size: 20px; font-weight: 700; }
+
+        .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 100; }
+        .modal { background: #ffffff; border-radius: var(--ios-radius); width: 540px; max-width: 90%; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
+        .modal-header { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+        .modal-body .form-group { margin-bottom: 14px; }
+        .modal-body label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #3a3a3c; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+        #qrDisplayArea { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; background: #f9f9fb; border-radius: 12px; border: 1px dashed var(--border-light); margin-bottom: 15px; }
+        #qrCodeContainer { padding: 12px; background: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+        .esg-box { background: #f0fdf4; border: 1px dashed #22c55e; border-radius: 10px; padding: 12px 16px; margin-top: 10px; }
+        .esg-box h4 { margin: 0 0 8px 0; color: #15803d; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+        .esg-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    </style>
+</head>
+<body>
+
+    <!-- 側邊欄 -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2>🍃 循環玻璃瓶裝水<br>數位產品護照管理系統 V06.03</h2>
+            <div style="margin-top: 8px; font-size: 11px; color: var(--text-sub);">修訂版本時間：20260814PM</div>
+            <div style="margin-top: 10px;">
+                <label style="font-size: 12px; color: var(--text-sub);">當前切換身份：</label>
+                <select id="userRoleSelect" class="form-control" style="margin-top: 4px;" onchange="changeRole()">
+                    <option value="Admin">Admin (系統管理員)</option>
+                    <option value="OD">OD (訂單管理員)</option>
+                    <option value="QA">QA (品質保證員)</option>
+                    <option value="OP">OP (生產線操作員)</option>
+                    <option value="WH">WH (倉庫管理員)</option>
+                </select>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li id="nav-page1" class="active" onclick="switchPage('page1', event)"><span class="icon">📊</span><span class="text">系統總覽 (Dashboard)</span></li>
+                <li id="nav-page2" onclick="switchPage('page2', event)"><span class="icon">🍾</span><span class="text">玻璃瓶容器管理</span></li>
+                <li id="nav-page3" onclick="switchPage('page3', event)"><span class="icon">📦</span><span class="text">產品 DPP 管理</span></li>
+                <li id="nav-page4" onclick="switchPage('page4', event)"><span class="icon">🔄</span><span class="text">產品追溯管理</span></li>
+                <li id="nav-page5" onclick="switchPage('page5', event)"><span class="icon">🏭</span><span class="text">灌裝生產批次</span></li>
+                <li id="nav-page6" onclick="switchPage('page6', event)"><span class="icon">📱</span><span class="text">消費者護照查詢 (Front)</span></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- 主內容區 -->
+    <main class="main-content">
+
+        <!-- 頁面 1：系統總覽 -->
+        <section id="page1" class="page active">
+            <div class="page-header"><h1>頁面一：系統總覽 (Dashboard V06.03)</h1></div>
+            <div class="card">
+                <div class="card-title">永續數據與展示資料</div>
+                <button class="btn btn-success" onclick="loadDemoData10000()">⚡ 載入系統預設資料 (10,000筆模擬數據)</button>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">全域 12 種狀態庫存統計總覽</div>
+                <div class="summary-banner">
+                    <div class="summary-item">
+                        <div class="label">可用物料總數</div>
+                        <div class="val" id="dashAvailCount" style="color:var(--eco-green);">0</div>
+                    </div>
+                    <div class="summary-item" style="border-left:1px solid var(--border-light);">
+                        <div class="label">不可用物料總數</div>
+                        <div class="val" id="dashUnavailCount" style="color:#ff3b30;">0</div>
+                    </div>
+                    <div class="summary-item" style="border-left:1px solid var(--border-light);">
+                        <div class="label">序列號總筆數</div>
+                        <div class="val" id="dashTotalCount" style="color:var(--primary-blue);">0</div>
+                    </div>
+                </div>
+                <div class="status-grid" id="dashStatusGrid"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">12 種狀態分佈圓餅圖 (Pie Chart)</div>
+                <div style="max-width: 520px; margin: 0 auto; padding: 10px;">
+                    <canvas id="statusPieChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 頁面 2 -->
+        <section id="page2" class="page">
+            <div class="page-header">
+                <h1>頁面二：玻璃瓶容器管理</h1>
+                <button class="btn btn-success" onclick="openModal('bottle', 'add')">＋ 新增玻璃瓶型</button>
+            </div>
+            <div class="card">
+                <div class="table-container">
+                    <table id="bottleTable">
+                        <thead><tr><th>縮圖</th><th>瓶型代碼</th><th>名稱</th><th>容量 (ml)</th><th>重量 (g)</th><th>尺寸</th><th>最大循環次數</th><th>操作</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 頁面 3：DPP 管理 (V06.03 新增 ESG 碳排放設定) -->
+        <section id="page3" class="page">
+            <div class="page-header">
+                <h1>頁面三：產品 DPP 管理</h1>
+                <button class="btn btn-success" onclick="openModal('product', 'add')">＋ 新增 DPP 產品</button>
+            </div>
+            <div class="card">
+                <div class="table-container">
+                    <table id="productTable">
+                        <thead><tr><th>縮圖</th><th>GTIN</th><th>產品名稱</th><th>瓶型代碼</th><th>水源/產地</th><th>產品描述</th><th>ESG 總碳足跡</th><th>操作</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 頁面 4：產品追溯管理 (V06.03 批量勾選與一次性狀態修改) -->
+        <section id="page4" class="page">
+            <div class="page-header"><h1>頁面四：產品追溯管理 (V06.03)</h1></div>
+            
+            <div class="card" style="padding: 16px;">
+                <div class="summary-banner" style="margin-bottom:10px;">
+                    <div class="summary-item">
+                        <div class="label">✔ 可用物料總數</div>
+                        <div class="val" id="topAvailCount" style="color:var(--eco-green);">0</div>
+                    </div>
+                    <div class="summary-item" style="border-left:1px solid var(--border-light);">
+                        <div class="label">✘ 不可用物料總數</div>
+                        <div class="val" id="topUnavailCount" style="color:#ff3b30;">0</div>
+                    </div>
+                    <div class="summary-item" style="border-left:1px solid var(--border-light);">
+                        <div class="label">總序列號筆數</div>
+                        <div class="val" id="topTotalCount" style="color:var(--primary-blue);">0</div>
+                    </div>
+                </div>
+                <div style="font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">12 種生命週期狀態即時統計：</div>
+                <div class="status-grid" id="topStatusGrid"></div>
+            </div>
+
+            <div class="card">
+                <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap; align-items:center;">
+                    <input type="text" id="searchInput" class="form-control" style="width:250px;" placeholder="搜尋序列號 (如 A00001) 或 GRAI...">
+                    <button class="btn" onclick="searchSerial()">🔍 搜尋</button>
+                    <button class="btn btn-secondary" onclick="clearSerialSearch()">🧹 清除搜尋</button>
+                    
+                    <!-- V06.03 新增需求 1：批量勾選修改按鈕與計數 -->
+                    <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:13px; font-weight:600; color:var(--primary-blue);" id="selectedCountText">已勾選 0 筆</span>
+                        <button class="btn btn-warning" onclick="openBatchStatusModal()">☑️ 批次修改勾選項目狀態</button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="serialTable">
+                        <thead>
+                            <tr>
+                                <!-- V06.03 勾選框 -->
+                                <th style="width:38px; text-align:center;">
+                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAllCurrentPage(this)">
+                                </th>
+                                <th class="sortable" onclick="sortTable('serials', 0)">GRAI 代碼 ⇅</th>
+                                <th>Digital Link 二維碼</th>
+                                <th class="sortable" onclick="sortTable('serials', 1)">序列號 ⇅</th>
+                                <th class="sortable" onclick="sortTable('serials', 2)">GTIN ⇅</th>
+                                <th>
+                                    當前狀態 (12種)<br>
+                                    <select id="statusFilterSelect" class="form-control" style="font-size:11px; padding:2px 4px; margin-top:2px;" onchange="applySerialFilters()">
+                                        <option value="">全部狀態 (全選)</option>
+                                        <option value="新庫存">新庫存</option>
+                                        <option value="已預訂">已預訂</option>
+                                        <option value="生產中">生產中</option>
+                                        <option value="生產不合格">生產不合格</option>
+                                        <option value="灌裝完成">灌裝完成</option>
+                                        <option value="QA完成可出貨">QA完成可出貨</option>
+                                        <option value="通路銷售中">通路銷售中</option>
+                                        <option value="已回收未清洗">已回收未清洗</option>
+                                        <option value="清洗完成">清洗完成</option>
+                                        <option value="QA回收入庫">QA回收入庫</option>
+                                        <option value="已報廢">已報廢</option>
+                                        <option value="樣品">樣品</option>
+                                    </select>
+                                </th>
+                                <th class="sortable" onclick="sortTable('serials', 9)">可用物料 ⇅</th>
+                                <th>
+                                    存放區域<br>
+                                    <select id="areaFilterSelect" class="form-control" style="font-size:11px; padding:2px 4px; margin-top:2px;" onchange="applySerialFilters()">
+                                        <option value="">全部區域 (全選)</option>
+                                    </select>
+                                </th>
+                                <th class="sortable" onclick="sortTable('serials', 5)">灌裝次數 ⇅</th>
+                                <th class="sortable" onclick="sortTable('serials', 6)">回收次數 ⇅</th>
+                                <th>最新批次號</th>
+                                <th style="min-width:140px;">最新狀態改變時間</th>
+                                <th style="min-width:160px;">備註標註</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-container">
+                    <div id="paginationInfo" style="color:var(--text-sub);">顯示 0 - 0 筆，共 0 筆資料</div>
+                    <div class="pagination-nav">
+                        <button class="page-btn" onclick="goToPage(1)">« 第一頁</button>
+                        <button class="page-btn" onclick="prevPage()">‹ 上一頁</button>
+                        <span id="pageButtons" style="display:inline-flex; gap:2px;"></span>
+                        <button class="page-btn" onclick="nextPage()">下一頁 ›</button>
+                        <button class="page-btn" onclick="goToPage(totalPages)">最末頁 »</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 頁面 5：灌裝生產批次 -->
+        <section id="page5" class="page">
+            <div class="page-header">
+                <h1>頁面五：灌裝生產批次</h1>
+                <button class="btn btn-success" onclick="openModal('batch', 'add')">＋ 新增生產批次</button>
+            </div>
+            <div class="card">
+                <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                    <input type="text" id="batchSearchInput" class="form-control" style="width:280px;" placeholder="搜尋訂單號 (如 ORD-...) 或 客戶名稱...">
+                    <button class="btn" onclick="searchBatchOrder()">🔍 搜尋訂單</button>
+                    <button class="btn btn-secondary" onclick="clearBatchSearch()">🧹 清除搜尋</button>
+                    
+                    <select id="batchStatusFilter" class="form-control" style="width:180px;" onchange="filterBatchTable()">
+                        <option value="">全部訂單狀態</option>
+                        <option value="草稿">草稿</option>
+                        <option value="新建立">新建立</option>
+                        <option value="已推送至生產線">已推送至生產線</option>
+                        <option value="已完成生產">已完成生產</option>
+                        <option value="異常">異常</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table id="batchTable">
+                        <thead>
+                            <tr>
+                                <th>圖檔/標籤</th>
+                                <th class="sortable" onclick="sortTable('batches', 0)">批次號 ⇅</th>
+                                <th class="sortable" onclick="sortTable('batches', 1)">訂單號 ⇅</th>
+                                <th class="sortable" onclick="sortTable('batches', 2)">客戶名稱 ⇅</th>
+                                <th class="sortable" onclick="sortTable('batches', 7)">訂單狀態 ⇅</th>
+                                <th class="sortable" onclick="sortTable('batches', 8)">需求預訂數量 ⇅</th>
+                                <th>GTIN</th>
+                                <th class="sortable" onclick="sortTable('batches', 4)">生產日期 ⇅</th>
+                                <th>訂單備註</th>
+                                <th>綁定 SN 包下載</th>
+                                <th>管理操作與工作流</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 頁面 6：消費者護照查詢 (V06.03 新增 ESG 碳足跡展示) -->
+        <section id="page6" class="page">
+            <div class="page-header"><h1>頁面六：消費者護照查詢 (Front)</h1></div>
+            <div class="card" style="max-width: 520px; margin: auto; text-align: center;">
+                <h2>🍾 數位產品護照 (DPP)</h2>
+                <input type="text" id="frontQueryInput" class="form-control" value="A00001" style="text-align:center; margin-bottom: 12px;">
+                <button class="btn btn-success" style="width:100%; justify-content:center;" onclick="queryDPP()">📱 查詢護照履歷</button>
+                <div id="dppResult" style="margin-top:20px; text-align:left; display:none;">
+                    <hr style="border:0; border-top:1px solid var(--border-light);">
+                    <p><strong>產品名稱：</strong> <span id="dppProdName"></span></p>
+                    <p><strong>GRAI 代碼：</strong> <span id="dppGrai"></span></p>
+                    <p><strong>瓶子當前狀態：</strong> <span id="dppStatus" style="font-weight:bold; color:var(--primary-blue);"></span></p>
+                    <p><strong>可用物料狀態：</strong> <span id="dppAvail"></span></p>
+                    <p><strong>所在實體區域：</strong> <span id="dppLocation"></span></p>
+                    <p><strong>循環次數：</strong> <span id="dppCycleCount" style="color:var(--eco-green); font-weight:bold;"></span> 次</p>
+                    <p><strong>最新狀態改變時間：</strong> <span id="dppUpdateTime"></span></p>
+                    <p><strong>歷史批次紀錄：</strong> <span id="dppBatch"></span></p>
+                    <p><strong>備註標記：</strong> <span id="dppRemark"></span></p>
+
+                    <!-- V06.03 碳足跡連動展示預留 -->
+                    <div class="esg-box">
+                        <h4>🌱 ESG 產品碳足跡履歷</h4>
+                        <p style="margin:4px 0; font-size:13px;"><strong>全生命週期總碳排放：</strong> <span id="dppEsgTotal" style="font-size:16px; font-weight:700; color:#15803d;">0.00</span> kgCO₂e / 瓶</p>
+                        <div class="esg-grid" style="font-size:11.5px; color:#166534; margin-top:8px;">
+                            <div>• 原料與製造：<span id="dppEsgRaw">0</span> kg</div>
+                            <div>• 灌裝生產：<span id="dppEsgFill">0</span> kg</div>
+                            <div>• 物流運輸：<span id="dppEsgLog">0</span> kg</div>
+                            <div>• 回收與清洗：<span id="dppEsgRec">0</span> kg</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 通用 Modal 彈窗 -->
+    <div id="modalBackdrop" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header" id="modalTitle">新增資料</div>
+            <div class="modal-body" id="modalFormBody"></div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-success" onclick="saveModalData()">儲存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 單筆狀態變更 Modal -->
+    <div id="statusModalBackdrop" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header">變更瓶子生命週期狀態</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>序列號：</label>
+                    <input type="text" id="statusModalSN" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label>選擇新狀態 (12種)：</label>
+                    <select id="statusModalSelect" class="form-control" onchange="onStatusSelectChange()">
+                        <option value="新庫存">新庫存</option>
+                        <option value="已預訂">已預訂</option>
+                        <option value="生產中">生產中</option>
+                        <option value="生產不合格">生產不合格</option>
+                        <option value="灌裝完成">灌裝完成</option>
+                        <option value="QA完成可出貨">QA完成可出貨</option>
+                        <option value="通路銷售中">通路銷售中</option>
+                        <option value="已回收未清洗">已回收未清洗</option>
+                        <option value="清洗完成">清洗完成</option>
+                        <option value="QA回收入庫">QA回收入庫</option>
+                        <option value="已報廢">已報廢</option>
+                        <option value="樣品" id="sampleOption">樣品 (僅限 QA/Admin)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>可用物料標記 (系統自動對應)：</label>
+                    <input type="text" id="statusModalAvailText" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label>自動對應實體區域：</label>
+                    <input type="text" id="statusModalArea" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label>備註標註：</label>
+                    <textarea id="statusModalRemark" class="form-control" rows="2" placeholder="請輸入備註..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeStatusModal()">取消</button>
+                <button class="btn btn-success" onclick="saveStatusChange()">確認更新</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- V06.03 新增：批次勾選狀態修改 Modal -->
+    <div id="batchStatusModalBackdrop" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header">☑️ 批次修改已勾選項目狀態</div>
+            <div class="modal-body">
+                <div style="background:#eef2ff; color:#3730a3; padding:10px; border-radius:8px; font-size:12.5px; margin-bottom:12px;">
+                    <strong>目前已勾選筆數：</strong> <span id="batchModalSelectedCount" style="font-weight:700;">0</span> 筆
+                </div>
+                <div class="form-group">
+                    <label>統一變更為新狀態 (12種)：</label>
+                    <select id="batchStatusSelect" class="form-control" onchange="onBatchStatusSelectChange()">
+                        <option value="新庫存">新庫存</option>
+                        <option value="已預訂">已預訂</option>
+                        <option value="生產中">生產中</option>
+                        <option value="生產不合格">生產不合格</option>
+                        <option value="灌裝完成">灌裝完成</option>
+                        <option value="QA完成可出貨">QA完成可出貨</option>
+                        <option value="通路銷售中">通路銷售中</option>
+                        <option value="已回收未清洗">已回收未清洗</option>
+                        <option value="清洗完成">清洗完成</option>
+                        <option value="QA回收入庫">QA回收入庫</option>
+                        <option value="已報廢">已報廢</option>
+                        <option value="樣品">樣品 (僅限 QA/Admin)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>對應可用物料標記：</label>
+                    <input type="text" id="batchModalAvailText" class="form-control" value="✔ 可用物料" readonly>
+                </div>
+                <div class="form-group">
+                    <label>自動對應實體區域：</label>
+                    <input type="text" id="batchModalArea" class="form-control" value="新物料庫存區" readonly>
+                </div>
+                <div class="form-group">
+                    <label>覆蓋/新增批次備註標註：</label>
+                    <textarea id="batchModalRemark" class="form-control" rows="2" placeholder="請輸入批次更新備註..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeBatchStatusModal()">取消</button>
+                <button class="btn btn-warning" onclick="saveBatchStatusChange()">⚡ 執行批次一次性修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- V06.03 新增：ESG 碳排放數據設定 Modal -->
+    <div id="esgModalBackdrop" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header">🌱 ESG 碳排放環節數據設定</div>
+            <div class="modal-body">
+                <div style="background:#f0fdf4; padding:10px; border-radius:8px; font-size:12px; color:#166534; margin-bottom:12px;">
+                    請輸入產品各生命週期環節之碳排放值（單位：kgCO₂e / 瓶），系統將自動進行加總計算，並連動至 DPP 護照。
+                </div>
+                <input type="hidden" id="esgProductGtin">
+                <div class="form-group">
+                    <label>1. 原料與容器製造碳排放：</label>
+                    <input type="number" step="0.01" id="esgRaw" class="form-control" value="0.45" oninput="calcEsgTotal()">
+                </div>
+                <div class="form-group">
+                    <label>2. 灌裝生產與包裝碳排放：</label>
+                    <input type="number" step="0.01" id="esgFill" class="form-control" value="0.12" oninput="calcEsgTotal()">
+                </div>
+                <div class="form-group">
+                    <label>3. 物流運輸與通路配送碳排放：</label>
+                    <input type="number" step="0.01" id="esgLog" class="form-control" value="0.18" oninput="calcEsgTotal()">
+                </div>
+                <div class="form-group">
+                    <label>4. 回收清洗與循環處置碳排放：</label>
+                    <input type="number" step="0.01" id="esgRec" class="form-control" value="0.05" oninput="calcEsgTotal()">
+                </div>
+                <hr style="border:0; border-top:1px dashed var(--border-light);">
+                <div class="form-group">
+                    <label style="font-size:15px; color:#15803d;">全生命週期碳足跡總和 (Total Carbon Footprint)：</label>
+                    <input type="text" id="esgTotalVal" class="form-control" style="font-size:18px; font-weight:700; color:#15803d; background:#e8f5e9;" readonly value="0.80 kgCO₂e">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEsgModal()">取消</button>
+                <button class="btn btn-success" onclick="saveEsgData()">💾 儲存 ESG 計算數據</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 二維碼 Modal -->
+    <div id="qrModalBackdrop" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header">GS1 Digital Link 二維碼</div>
+            <div class="modal-body">
+                <div id="qrDisplayArea">
+                    <div id="qrCodeContainer"></div>
+                    <div id="qrLinkUrl" style="word-break:break-all; font-size:12px; color:var(--text-sub); margin-top:10px; text-align:center;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeQRModal()">關閉</button>
+                <button class="btn btn-success" onclick="downloadQRJpg()">💾 下載 JPG 圖檔</button>
+                <button class="btn" onclick="jumpToPassportFromQR()">🔗 檢視消費者護照</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="batchReportFileInput" style="display:none;" accept=".xlsx, .xls" onchange="handleBatchReportUpload(event)">
+
+    <script>
+        const CURRENT_TIMESTAMP = "20260814PM";
+        const PAGE_SIZE = 200;
+
+        const statusToAreaMap = {
+            "新庫存": "新物料庫存區",
+            "已預訂": "可灌裝回收物料區",
+            "生產中": "生產線",
+            "生產不合格": "生產線待撿區",
+            "灌裝完成": "成品等待QA質檢區",
+            "QA完成可出貨": "成品可出貨區",
+            "通路銷售中": "市場流通中",
+            "已回收未清洗": "回收暫存區",
+            "清洗完成": "已清洗回收暫存區",
+            "QA回收入庫": "可灌裝回收物料區",
+            "已報廢": "報廢區",
+            "樣品": "樣品留樣區"
+        };
+
+        const statusColorMap = {
+            "新庫存": { bg: "#e3f2fd", color: "#0d47a1" },
+            "已預訂": { bg: "#fff3e0", color: "#e65100" },
+            "生產中": { bg: "#e8eaf6", color: "#1a237e" },
+            "生產不合格": { bg: "#ffebee", color: "#b71c1c" },
+            "灌裝完成": { bg: "#e0f2f1", color: "#004d40" },
+            "QA完成可出貨": { bg: "#e8f5e9", color: "#1b5e20" },
+            "通路銷售中": { bg: "#f3e5f5", color: "#4a148c" },
+            "已回收未清洗": { bg: "#fff8e1", color: "#f57f17" },
+            "清洗完成": { bg: "#e0f7fa", color: "#006064" },
+            "QA回收入庫": { bg: "#c8e6c9", color: "#2e7d32" },
+            "已報廢": { bg: "#efebe9", color: "#3e2723" },
+            "樣品": { bg: "#fce4ec", color: "#880e4f" }
+        };
+
+        const areaColorMap = {
+            "新物料庫存區": { bg: "#e1f5fe", color: "#01579b" },
+            "可灌裝回收物料區": { bg: "#f1f8e9", color: "#33691e" },
+            "生產線": { bg: "#ede7f6", color: "#4a148c" },
+            "生產線待撿區": { bg: "#fbe9e7", color: "#bf360c" },
+            "成品等待QA質檢區": { bg: "#e0f2f1", color: "#004d40" },
+            "成品可出貨區": { bg: "#dcedc8", color: "#1b5e20" },
+            "市場流通中": { bg: "#f3e5f5", color: "#6a1b9a" },
+            "回收暫存區": { bg: "#fffde7", color: "#f57f17" },
+            "已清洗回收暫存區": { bg: "#e0f7fa", color: "#00838f" },
+            "報廢區": { bg: "#d7ccc8", color: "#4e342e" },
+            "樣品留樣區": { bg: "#f8bbd0", color: "#880e4f" }
+        };
+
+        const all12Statuses = [
+            "新庫存", "已預訂", "生產中", "生產不合格", 
+            "灌裝完成", "QA完成可出貨", "通路銷售中", "已回收未清洗", 
+            "清洗完成", "QA回收入庫", "已報廢", "樣品"
+        ];
+
+        let currentRole = "Admin";
+        let activeUploadBatchNo = "";
+
+        // V06.03 勾選狀態集合 (儲存序列號 SN)
+        let selectedSNSet = new Set();
+
+        let filteredSerials = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let pieChartInstance = null;
+
+        let db = {
+            bottles: [
+                ["BOT-330ML-STD", "330ml 輕量標準玻璃瓶", 330, 250, "60mm x 210mm", 25, "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=100"],
+                ["BOT-500ML-STD", "500ml 經典特厚玻璃瓶", 500, 380, "70mm x 240mm", 30, "https://images.unsplash.com/photo-1589365278144-c9e705f843ba?w=100"],
+                ["BOT-750ML-PRE", "750ml 頂級餐飲氣泡瓶", 750, 520, "82mm x 295mm", 20, "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=100"]
+            ],
+            // V06.03 產品新增 ESG 欄位預設值 [raw, fill, log, rec, total]
+            products: [
+                ["04712345678901", "天然氣泡微礦泉水 500ml", "BOT-500ML-STD", "雪山山脈天然湧泉", "微氣泡口感，富含天然偏矽酸", "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=100", { raw: 0.45, fill: 0.12, log: 0.18, rec: 0.05, total: 0.80 }],
+                ["04712345678925", "頂級佐餐氣泡水 750ml", "BOT-750ML-PRE", "中央山脈高海拔水源", "極致細緻氣泡，佐餐首選", "https://images.unsplash.com/photo-1589365278144-c9e705f843ba?w=100", { raw: 0.60, fill: 0.15, log: 0.22, rec: 0.08, total: 1.05 }]
+            ],
+            batches: [
+                ["BATCH-20260801", "ORD-2026-088", "台灣好水連鎖餐飲", "04712345678901", "2026-08-01", "2027-08-01", "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=100", "已完成生產", 100, "第一批次順利完工"],
+                ["BATCH-20260814", "ORD-2026-090", "誠品行旅", "04712345678925", "2026-08-14", "2027-08-14", "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=100", "新建立", 50, "急件訂單"],
+                ["BATCH-20260815", "ORD-2026-091", "全家便利商店", "04712345678901", "2026-08-15", "2027-08-15", "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=100", "草稿", 200, "待客戶確認數量"]
+            ],
+            serials: []
+        };
+
+        let currentActiveSerial = '';
+        let editingSerialIdx = -1;
+
+        function changeRole() {
+            currentRole = document.getElementById('userRoleSelect').value;
+            applySerialFilters();
+            renderBatchTable(db.batches);
+        }
+
+        function checkIsAvailable(status) {
+            return (status === "新庫存" || status === "QA回收入庫");
+        }
+
+        function initSerials10000() {
+            db.serials = [];
+            selectedSNSet.clear();
+            const gtinList = ["04712345678901", "04712345678925"];
+            const batchList = ["BATCH-20260801", "BATCH-20260814"];
+
+            for (let i = 1; i <= 10000; i++) {
+                let sn = "A" + String(i).padStart(5, '0');
+                let gtin = gtinList[(i - 1) % 2];
+                let batch = batchList[(i - 1) % 2];
+                let status = all12Statuses[(i - 1) % all12Statuses.length];
+                let area = statusToAreaMap[status];
+                let fillCount = ((i * 2) % 10) + 1;
+                let recycleCount = fillCount > 1 ? fillCount - 1 : 0;
+                let grai = `00047123456789018003${sn}`;
+                let isAvail = checkIsAvailable(status);
+                let remark = (status === "樣品") ? "QA抽樣保留件，需定期進行瓶身應力測試" : (status === "已報廢" ? "瓶口微裂報廢，已標記移至廢棄物處理區" : "系統自動初始化預設追溯數據");
+                let updateTime = CURRENT_TIMESTAMP;
+                
+                let historyBatches = new Array(30).fill("");
+                if (status === "灌裝完成" || status === "QA完成可出貨" || status === "通路銷售中") {
+                    historyBatches[0] = batch;
+                }
+
+                db.serials.push([grai, sn, gtin, status, area, fillCount, recycleCount, batch, remark, isAvail, updateTime, historyBatches]);
+            }
+            initAreaFilterOptions();
+            updateSelectedCountUI();
+        }
+
+        function initAreaFilterOptions() {
+            const areaSelect = document.getElementById('areaFilterSelect');
+            areaSelect.innerHTML = '<option value="">全部區域 (全選)</option>';
+            const areas = [...new Set(Object.values(statusToAreaMap))];
+            areas.forEach(area => {
+                areaSelect.innerHTML += `<option value="${area}">${area}</option>`;
+            });
+        }
+
+        function loadDemoData10000() {
+            initSerials10000();
+            renderAll();
+            alert("已成功升級並載入 10,000 筆 V06.03 模擬數據！");
+        }
+
+        function switchPage(pageId, evt) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.sidebar-nav li').forEach(li => li.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            
+            const targetNav = evt ? evt.currentTarget : document.getElementById('nav-' + pageId);
+            if(targetNav) targetNav.classList.add('active');
+        }
+
+        function calculateStatistics() {
+            const counts = {};
+            all12Statuses.forEach(st => counts[st] = 0);
+
+            let availTotal = 0;
+            let unavailTotal = 0;
+
+            db.serials.forEach(s => {
+                const st = s[3];
+                if (counts[st] !== undefined) counts[st]++;
+                if (s[9] === true) availTotal++;
+                else unavailTotal++;
+            });
+
+            return {
+                statusCounts: counts,
+                availTotal: availTotal,
+                unavailTotal: unavailTotal,
+                grandTotal: db.serials.length
+            };
+        }
+
+        function renderStatisticsUI() {
+            const stats = calculateStatistics();
+
+            document.getElementById('dashAvailCount').innerText = stats.availTotal.toLocaleString();
+            document.getElementById('dashUnavailCount').innerText = stats.unavailTotal.toLocaleString();
+            document.getElementById('dashTotalCount').innerText = stats.grandTotal.toLocaleString();
+
+            document.getElementById('topAvailCount').innerText = stats.availTotal.toLocaleString();
+            document.getElementById('topUnavailCount').innerText = stats.unavailTotal.toLocaleString();
+            document.getElementById('topTotalCount').innerText = stats.grandTotal.toLocaleString();
+
+            const gridHTML = all12Statuses.map(st => {
+                const colorObj = statusColorMap[st] || { bg: '#f2f2f7', color: '#1c1c1e' };
+                return `
+                    <div class="status-card" style="background-color:${colorObj.bg}; border-color:rgba(0,0,0,0.06);">
+                        <div class="title" style="color:${colorObj.color};">${st}</div>
+                        <div class="num" style="color:${colorObj.color};">${(stats.statusCounts[st] || 0).toLocaleString()}</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('dashStatusGrid').innerHTML = gridHTML;
+            document.getElementById('topStatusGrid').innerHTML = gridHTML;
+
+            renderPieChart(stats.statusCounts);
+        }
+
+        function renderPieChart(statusCounts) {
+            const ctx = document.getElementById('statusPieChart');
+            if(!ctx) return;
+
+            const labels = all12Statuses;
+            const data = labels.map(st => statusCounts[st] || 0);
+            const bgColors = labels.map(st => statusColorMap[st] ? statusColorMap[st].bg : '#ccc');
+            const borderColors = labels.map(st => statusColorMap[st] ? statusColorMap[st].color : '#333');
+
+            if (pieChartInstance) {
+                pieChartInstance.destroy();
+            }
+
+            pieChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: bgColors,
+                        borderColor: borderColors,
+                        borderWidth: 1.5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const val = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                                    return `${label}: ${val.toLocaleString()} 筆 (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderAll() {
+            renderStatisticsUI();
+
+            document.querySelector('#bottleTable tbody').innerHTML = db.bottles.map((b, idx) => `
+                <tr>
+                    <td><img src="${b[6] || ''}" class="img-thumb"></td>
+                    <td>${b[0]}</td><td>${b[1]}</td><td>${b[2]}</td><td>${b[3]}</td><td>${b[4]}</td><td>${b[5]}</td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="openModal('bottle', 'edit', ${idx})">編輯</button>
+                        <button class="btn btn-danger" onclick="deleteItem('bottles', ${idx})">刪除</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // V06.03 頁面三渲染 ESG 數據欄位與按鈕
+            document.querySelector('#productTable tbody').innerHTML = db.products.map((p, idx) => {
+                let esgObj = p[6] || { total: 0.80 };
+                return `
+                <tr>
+                    <td><img src="${p[5] || ''}" class="img-thumb"></td>
+                    <td>${p[0]}</td><td><strong>${p[1]}</strong></td><td>${p[2]}</td><td>${p[3]}</td><td>${p[4]}</td>
+                    <td><span style="font-weight:700; color:#15803d;">${(esgObj.total || 0).toFixed(2)} kgCO₂e</span></td>
+                    <td>
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn btn-success" style="font-size:11px;" onclick="openEsgModal(${idx})">🌱 ESG 碳排放設定</button>
+                            <button class="btn btn-secondary" style="font-size:11px;" onclick="openModal('product', 'edit', ${idx})">編輯</button>
+                            <button class="btn btn-danger" style="font-size:11px;" onclick="deleteItem('products', ${idx})">刪除</button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+
+            renderBatchTable(db.batches);
+            applySerialFilters();
+        }
+
+        function applySerialFilters() {
+            const statusFilter = document.getElementById('statusFilterSelect').value;
+            const areaFilter = document.getElementById('areaFilterSelect').value;
+            const keyword = document.getElementById('searchInput').value.trim().toUpperCase();
+
+            filteredSerials = db.serials.filter(s => {
+                const matchStatus = !statusFilter || s[3] === statusFilter;
+                const matchArea = !areaFilter || s[4] === areaFilter;
+                const matchKeyword = !keyword || (s[1].toUpperCase().includes(keyword) || s[0].toUpperCase().includes(keyword));
+                return matchStatus && matchArea && matchKeyword;
+            });
+
+            currentPage = 1;
+            renderPagedSerialsTable();
+        }
+
+        function renderPagedSerialsTable() {
+            totalPages = Math.ceil(filteredSerials.length / PAGE_SIZE) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIndex = (currentPage - 1) * PAGE_SIZE;
+            const pageData = filteredSerials.slice(startIndex, startIndex + PAGE_SIZE);
+
+            const sBody = document.querySelector('#serialTable tbody');
+            sBody.innerHTML = pageData.map((s) => {
+                let realIdx = db.serials.findIndex(item => item[1] === s[1]);
+                let sn = s[1];
+                let isChecked = selectedSNSet.has(sn) ? 'checked' : '';
+                let availBadge = s[9] ? `<span class="badge-status" style="background:#e8f5e9; color:#2e7d32;">✔ 可用</span>` : `<span class="badge-status" style="background:#ffebee; color:#c62828;">✘ 不可用</span>`;
+                
+                let stStyle = statusColorMap[s[3]] || { bg: '#e3f2fd', color: '#0d47a1' };
+                let statusBadge = `<span class="badge-status" style="background:${stStyle.bg}; color:${stStyle.color};">${s[3]}</span>`;
+
+                let arStyle = areaColorMap[s[4]] || { bg: '#f3e5f5', color: '#4a148c' };
+                let areaBadge = `<span class="badge-status" style="background:${arStyle.bg}; color:${arStyle.color};">${s[4]}</span>`;
+
+                return `
+                <tr>
+                    <!-- V06.03 單列勾選框 -->
+                    <td style="text-align:center;">
+                        <input type="checkbox" class="sn-checkbox" data-sn="${sn}" ${isChecked} onchange="toggleSelectSN('${sn}', this.checked)">
+                    </td>
+                    <td>${s[0]}</td>
+                    <td>
+                        <button class="btn btn-success" style="font-size:11px; padding:3px 6px;" onclick="generateDigitalLinkQR('${s[2]}', '${sn}')">
+                            📱 二維碼
+                        </button>
+                    </td>
+                    <td><strong>${sn}</strong></td>
+                    <td>${s[2]}</td>
+                    <td>${statusBadge}</td>
+                    <td>${availBadge}</td>
+                    <td>${areaBadge}</td>
+                    <td>${s[5]}</td>
+                    <td>${s[6]}</td>
+                    <td>${s[7]}</td>
+                    <td><small style="color:var(--text-sub);">${s[10] || ''}</small></td>
+                    <td><small>${s[8] || ''}</small></td>
+                    <td>
+                        <button class="btn btn-secondary" style="font-size:11px; padding:3px 6px;" onclick="openStatusModal(${realIdx})">
+                            ✏️ 狀態變更
+                        </button>
+                    </td>
+                </tr>
+            `}).join('');
+
+            updatePaginationControls(startIndex, pageData.length);
+            updateSelectAllCheckboxState(pageData);
+        }
+
+        // V06.03 勾選控制邏輯
+        function toggleSelectSN(sn, isChecked) {
+            if (isChecked) selectedSNSet.add(sn);
+            else selectedSNSet.delete(sn);
+            updateSelectedCountUI();
+        }
+
+        function toggleSelectAllCurrentPage(masterCb) {
+            const startIndex = (currentPage - 1) * PAGE_SIZE;
+            const pageData = filteredSerials.slice(startIndex, startIndex + PAGE_SIZE);
+
+            pageData.forEach(s => {
+                const sn = s[1];
+                if (masterCb.checked) selectedSNSet.add(sn);
+                else selectedSNSet.delete(sn);
+            });
+
+            document.querySelectorAll('.sn-checkbox').forEach(cb => {
+                cb.checked = masterCb.checked;
+            });
+
+            updateSelectedCountUI();
+        }
+
+        function updateSelectAllCheckboxState(pageData) {
+            const masterCb = document.getElementById('selectAllCheckbox');
+            if (!masterCb || pageData.length === 0) return;
+            const allChecked = pageData.every(s => selectedSNSet.has(s[1]));
+            masterCb.checked = allChecked;
+        }
+
+        function updateSelectedCountUI() {
+            const count = selectedSNSet.size;
+            document.getElementById('selectedCountText').innerText = `已勾選 ${count.toLocaleString()} 筆`;
+        }
+
+        // V06.03 批次修改狀態 Modal 相關邏輯
+        function openBatchStatusModal() {
+            if (selectedSNSet.size === 0) {
+                alert("請先在下方表格中勾選至少一筆項目！");
+                return;
+            }
+            document.getElementById('batchModalSelectedCount').innerText = selectedSNSet.size.toLocaleString();
+            onBatchStatusSelectChange();
+            document.getElementById('batchStatusModalBackdrop').style.display = 'flex';
+        }
+
+        function closeBatchStatusModal() {
+            document.getElementById('batchStatusModalBackdrop').style.display = 'none';
+        }
+
+        function onBatchStatusSelectChange() {
+            const st = document.getElementById('batchStatusSelect').value;
+            document.getElementById('batchModalArea').value = statusToAreaMap[st] || "未知區域";
+            const isAvail = checkIsAvailable(st);
+            document.getElementById('batchModalAvailText').value = isAvail ? "✔ 可用物料" : "✘ 不可用物料";
+        }
+
+        function saveBatchStatusChange() {
+            const newStatus = document.getElementById('batchStatusSelect').value;
+            const newArea = document.getElementById('batchModalArea').value;
+            const newRemark = document.getElementById('batchModalRemark').value.trim();
+
+            if (newStatus === "樣品" && (currentRole !== "Admin" && currentRole !== "QA")) {
+                alert("權限不足！只有 QA 或 Admin 權限才能將批次狀態變更為「樣品」。");
+                return;
+            }
+
+            if (!confirm(`確定要將已勾選的 ${selectedSNSet.size.toLocaleString()} 筆項目狀態一次性修改為【${newStatus}】？`)) return;
+
+            let updatedCount = 0;
+            db.serials.forEach(s => {
+                if (selectedSNSet.has(s[1])) {
+                    s[3] = newStatus;
+                    s[4] = newArea;
+                    s[9] = checkIsAvailable(newStatus);
+                    s[10] = CURRENT_TIMESTAMP;
+                    if (newRemark !== "") s[8] = newRemark;
+                    updatedCount++;
+                }
+            });
+
+            closeBatchStatusModal();
+            selectedSNSet.clear();
+            renderAll();
+            alert(`已成功統一修改 ${updatedCount.toLocaleString()} 筆序列號之狀態！`);
+        }
+
+        function updatePaginationControls(startIndex, countOnPage) {
+            const totalCount = filteredSerials.length;
+            const startNum = totalCount === 0 ? 0 : startIndex + 1;
+            const endNum = startIndex + countOnPage;
+
+            document.getElementById('paginationInfo').innerText = `顯示 ${startNum.toLocaleString()} - ${endNum.toLocaleString()} 筆，共 ${totalCount.toLocaleString()} 筆資料`;
+
+            const btnContainer = document.getElementById('pageButtons');
+            btnContainer.innerHTML = '';
+
+            let startP = Math.max(1, currentPage - 2);
+            let endP = Math.min(totalPages, startP + 4);
+            if (endP - startP < 4) startP = Math.max(1, endP - 4);
+
+            for (let i = startP; i <= endP; i++) {
+                const btn = document.createElement('button');
+                btn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                btn.innerText = i;
+                btn.onclick = () => goToPage(i);
+                btnContainer.appendChild(btn);
+            }
+        }
+
+        function goToPage(p) {
+            if (p < 1 || p > totalPages) return;
+            currentPage = p;
+            renderPagedSerialsTable();
+        }
+
+        function prevPage() { if (currentPage > 1) { currentPage--; renderPagedSerialsTable(); } }
+        function nextPage() { if (currentPage < totalPages) { currentPage++; renderPagedSerialsTable(); } }
+
+        function searchSerial() { applySerialFilters(); }
+        function clearSerialSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilterSelect').value = '';
+            document.getElementById('areaFilterSelect').value = '';
+            applySerialFilters();
+        }
+
+        function renderBatchTable(data) {
+            const btBody = document.querySelector('#batchTable tbody');
+            btBody.innerHTML = data.map((bt) => {
+                let realIdx = db.batches.findIndex(item => item[0] === bt[0]);
+                let status = bt[7];
+
+                let canSendProd = (status === "新建立");
+                let canUploadReport = (status === "已推送至生產線");
+                let canDetail = (status === "已推送至生產線" || status === "已完成生產");
+
+                let snXlsxLink = (status === "已推送至生產線" || status === "已完成生產") 
+                    ? `<a href="#" onclick="downloadBatchSNPackage('${bt[0]}')">📥 Batch_${bt[0]}_SN_Package.xlsx</a>` 
+                    : `<span style="color:var(--text-sub); font-size:11px;">尚未排產生成</span>`;
+
+                return `
+                <tr>
+                    <td><img src="${bt[6] || ''}" class="img-thumb"></td>
+                    <td><strong>${bt[0]}</strong></td>
+                    <td>${bt[1]}</td>
+                    <td>${bt[2]}</td>
+                    <td><span class="badge-status" style="background:#fff3e0; color:#e65100;">${status}</span></td>
+                    <td><strong>${bt[8] || 0}</strong> 瓶</td>
+                    <td>${bt[3]}</td>
+                    <td>${bt[4]}</td>
+                    <td><small>${bt[9] || ''}</small></td>
+                    <td>${snXlsxLink}</td>
+                    <td>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                            <button class="btn ${canSendProd ? 'btn-success' : 'btn-disabled'}" ${canSendProd ? '' : 'disabled'} onclick="sendToProduction(${realIdx})">🚀 發送並執行生產</button>
+                            <button class="btn ${canDetail ? '' : 'btn-disabled'}" ${canDetail ? '' : 'disabled'} onclick="queryBatchSNDetail(${realIdx})">🔍 查詢序列號明細</button>
+                            <button class="btn btn-secondary ${canUploadReport ? '' : 'btn-disabled'}" ${canUploadReport ? '' : 'disabled'} onclick="triggerUploadReport('${bt[0]}')">📤 上傳批次報告</button>
+                            <button class="btn btn-secondary" style="font-size:11px;" onclick="openModal('batch', 'edit', ${realIdx})">編輯</button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        function searchBatchOrder() {
+            const q = document.getElementById('batchSearchInput').value.trim().toUpperCase();
+            if(!q) return;
+            const res = db.batches.filter(b => b[1].toUpperCase().includes(q) || b[2].includes(q) || b[0].toUpperCase().includes(q));
+            renderBatchTable(res);
+        }
+
+        function clearBatchSearch() {
+            document.getElementById('batchSearchInput').value = '';
+            document.getElementById('batchStatusFilter').value = '';
+            renderBatchTable(db.batches);
+        }
+
+        function filterBatchTable() {
+            const st = document.getElementById('batchStatusFilter').value;
+            if(!st) { renderBatchTable(db.batches); return; }
+            const res = db.batches.filter(b => b[7] === st);
+            renderBatchTable(res);
+        }
+
+        function openStatusModal(index) {
+            editingSerialIdx = index;
+            const item = db.serials[index];
+
+            document.getElementById('statusModalSN').value = item[1];
+            document.getElementById('statusModalSelect').value = item[3];
+            document.getElementById('statusModalArea').value = item[4];
+            document.getElementById('statusModalRemark').value = item[8] || '';
+            document.getElementById('statusModalAvailText').value = item[9] ? "✔ 可用物料" : "✘ 不可用物料";
+
+            const sampleOpt = document.getElementById('sampleOption');
+            sampleOpt.disabled = !(currentRole === "Admin" || currentRole === "QA");
+
+            document.getElementById('statusModalBackdrop').style.display = 'flex';
+        }
+
+        function onStatusSelectChange() {
+            const st = document.getElementById('statusModalSelect').value;
+            document.getElementById('statusModalArea').value = statusToAreaMap[st] || "未知區域";
+            const isAvail = checkIsAvailable(st);
+            document.getElementById('statusModalAvailText').value = isAvail ? "✔ 可用物料" : "✘ 不可用物料";
+        }
+
+        function closeStatusModal() {
+            document.getElementById('statusModalBackdrop').style.display = 'none';
+        }
+
+        function saveStatusChange() {
+            if (editingSerialIdx < 0) return;
+            const newStatus = document.getElementById('statusModalSelect').value;
+            const newArea = document.getElementById('statusModalArea').value;
+            const newRemark = document.getElementById('statusModalRemark').value;
+
+            if (newStatus === "樣品" && (currentRole !== "Admin" && currentRole !== "QA")) {
+                alert("權限不足！只有 QA 或 Admin 權限才能將狀態變更為「樣品」。");
+                return;
+            }
+
+            db.serials[editingSerialIdx][3] = newStatus;
+            db.serials[editingSerialIdx][4] = newArea;
+            db.serials[editingSerialIdx][8] = newRemark;
+            db.serials[editingSerialIdx][9] = checkIsAvailable(newStatus);
+            db.serials[editingSerialIdx][10] = CURRENT_TIMESTAMP;
+
+            closeStatusModal();
+            renderAll();
+            alert("序列號狀態與可用物料標記已更新！");
+        }
+
+        // V06.03 新增：ESG 碳排放 Modal 邏輯
+        let editingEsgProductIndex = -1;
+        function openEsgModal(prodIndex) {
+            editingEsgProductIndex = prodIndex;
+            const prod = db.products[prodIndex];
+            const esg = prod[6] || { raw: 0.45, fill: 0.12, log: 0.18, rec: 0.05, total: 0.80 };
+
+            document.getElementById('esgProductGtin').value = prod[0];
+            document.getElementById('esgRaw').value = esg.raw || 0;
+            document.getElementById('esgFill').value = esg.fill || 0;
+            document.getElementById('esgLog').value = esg.log || 0;
+            document.getElementById('esgRec').value = esg.rec || 0;
+
+            calcEsgTotal();
+            document.getElementById('esgModalBackdrop').style.display = 'flex';
+        }
+
+        function closeEsgModal() {
+            document.getElementById('esgModalBackdrop').style.display = 'none';
+        }
+
+        function calcEsgTotal() {
+            const raw = parseFloat(document.getElementById('esgRaw').value) || 0;
+            const fill = parseFloat(document.getElementById('esgFill').value) || 0;
+            const log = parseFloat(document.getElementById('esgLog').value) || 0;
+            const rec = parseFloat(document.getElementById('esgRec').value) || 0;
+
+            const total = raw + fill + log + rec;
+            document.getElementById('esgTotalVal').value = `${total.toFixed(2)} kgCO₂e`;
+        }
+
+        function saveEsgData() {
+            if (editingEsgProductIndex < 0) return;
+            const raw = parseFloat(document.getElementById('esgRaw').value) || 0;
+            const fill = parseFloat(document.getElementById('esgFill').value) || 0;
+            const log = parseFloat(document.getElementById('esgLog').value) || 0;
+            const rec = parseFloat(document.getElementById('esgRec').value) || 0;
+            const total = raw + fill + log + rec;
+
+            db.products[editingEsgProductIndex][6] = { raw, fill, log, rec, total };
+            closeEsgModal();
+            renderAll();
+            alert("ESG 碳排放數據設定已更新！此數據已同步至 DPP 產品護照預留模組。");
+        }
+
+        function generateDigitalLinkQR(gtin, serial) {
+            currentActiveSerial = serial;
+            const digitalLinkUrl = `https://dpp.example.com/01/${gtin}/21/${serial}`;
+            const container = document.getElementById('qrCodeContainer');
+            container.innerHTML = '';
+
+            new QRCode(container, {
+                text: digitalLinkUrl,
+                width: 170,
+                height: 170,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+
+            document.getElementById('qrLinkUrl').innerText = digitalLinkUrl;
+            document.getElementById('qrModalBackdrop').style.display = 'flex';
+        }
+
+        function closeQRModal() { document.getElementById('qrModalBackdrop').style.display = 'none'; }
+
+        function downloadQRJpg() {
+            const qrCanvas = document.querySelector('#qrCodeContainer canvas');
+            if(!qrCanvas) { alert("二維碼生成中..."); return; }
+            const link = document.createElement('a');
+            link.download = `DigitalLink_${currentActiveSerial}.jpg`;
+            link.href = qrCanvas.toDataURL("image/jpeg", 0.95);
+            link.click();
+        }
+
+        function jumpToPassportFromQR() {
+            closeQRModal();
+            document.getElementById('frontQueryInput').value = currentActiveSerial;
+            switchPage('page6');
+            queryDPP();
+        }
+
+        let currentModalTarget = '', currentModalMode = 'add', currentEditIndex = -1;
+
+        function openModal(target, mode, index = -1) {
+            currentModalTarget = target;
+            currentModalMode = mode;
+            currentEditIndex = index;
+            
+            const title = (mode === 'add' ? '新增' : '修改') + (target === 'bottle' ? '玻璃瓶型' : target === 'product' ? 'DPP 產品' : '生產批次');
+            document.getElementById('modalTitle').innerText = title;
+
+            let fieldsHTML = '';
+            let item = mode === 'edit' ? (target === 'bottle' ? db.bottles[index] : target === 'product' ? db.products[index] : db.batches[index]) : [];
+
+            if (target === 'batch') {
+                const totalClean = db.serials.filter(s => s[3] === "QA回收入庫").length;
+                const totalNew = db.serials.filter(s => s[3] === "新庫存").length;
+                const totalReserved = db.serials.filter(s => s[3] === "已預訂").length;
+                const totalAvailable = totalClean + totalNew;
+
+                fieldsHTML = `
+                    <div style="background:#e8f5e9; padding:10px; border-radius:8px; font-size:12px; margin-bottom:12px;">
+                        <strong>📦 當前可用物料庫存統計：</strong><br>
+                        • 可灌裝回收物料區 (QA回收入庫)：${totalClean} 筆<br>
+                        • 新物料庫存區 (新庫存)：${totalNew} 筆<br>
+                        • 已預訂物料：${totalReserved} 筆<br>
+                        👉 總計可用庫存：<strong>${totalAvailable}</strong> 筆
+                    </div>
+                    <div class="form-group"><label>批次號</label><input type="text" id="m_f0" class="form-control" value="${item[0]||'BATCH-'+Date.now().toString().slice(-6)}"></div>
+                    <div class="form-group"><label>訂單號</label><input type="text" id="m_f1" class="form-control" value="${item[1]||'ORD-2026-099'}"></div>
+                    <div class="form-group"><label>客戶名稱</label><input type="text" id="m_f2" class="form-control" value="${item[2]||'台鐵便當/餐飲部'}"></div>
+                    <div class="form-group"><label>需求生產數量 (瓶)</label><input type="number" id="m_f8" class="form-control" value="${item[8]||50}"></div>
+                    <div class="form-group"><label>綁定 GTIN</label><input type="text" id="m_f3" class="form-control" value="${item[3]||'04712345678901'}"></div>
+                    <div class="form-group"><label>生產日期</label><input type="date" id="m_f4" class="form-control" value="${item[4]||'2026-08-14'}"></div>
+                    <div class="form-group"><label>有效期限</label><input type="date" id="m_f5" class="form-control" value="${item[5]||'2027-08-14'}"></div>
+                    <div class="form-group"><label>訂單備註</label><textarea id="m_f9" class="form-control" rows="2">${item[9]||''}</textarea></div>
+                    <div class="form-group"><label>批次標籤圖</label><input type="file" id="m_img" class="form-control" accept="image/*"></div>
+                `;
+
+                document.getElementById('modalFooter').innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                    <button class="btn btn-secondary" onclick="saveBatchOrder('草稿')">💾 儲存草稿</button>
+                    <button class="btn btn-success" onclick="saveBatchOrder('新建立')">確認新增生產批次</button>
+                `;
+            } else if (target === 'bottle') {
+                fieldsHTML = `
+                    <div class="form-group"><label>瓶型代碼</label><input type="text" id="m_f0" class="form-control" value="${item[0]||''}"></div>
+                    <div class="form-group"><label>名稱</label><input type="text" id="m_f1" class="form-control" value="${item[1]||''}"></div>
+                    <div class="form-group"><label>容量 (ml)</label><input type="number" id="m_f2" class="form-control" value="${item[2]||''}"></div>
+                    <div class="form-group"><label>重量 (g)</label><input type="number" id="m_f3" class="form-control" value="${item[3]||''}"></div>
+                    <div class="form-group"><label>尺寸</label><input type="text" id="m_f4" class="form-control" value="${item[4]||''}"></div>
+                    <div class="form-group"><label>最大循環次數</label><input type="number" id="m_f5" class="form-control" value="${item[5]||''}"></div>
+                    <div class="form-group"><label>瓶身圖片</label><input type="file" id="m_img" class="form-control" accept="image/*"></div>
+                `;
+                document.getElementById('modalFooter').innerHTML = `<button class="btn btn-secondary" onclick="closeModal()">取消</button><button class="btn btn-success" onclick="saveModalData()">儲存修改</button>`;
+            } else if (target === 'product') {
+                fieldsHTML = `
+                    <div class="form-group"><label>GTIN 條碼</label><input type="text" id="m_f0" class="form-control" value="${item[0]||''}"></div>
+                    <div class="form-group"><label>產品名稱</label><input type="text" id="m_f1" class="form-control" value="${item[1]||''}"></div>
+                    <div class="form-group"><label>瓶型代碼</label><input type="text" id="m_f2" class="form-control" value="${item[2]||''}"></div>
+                    <div class="form-group"><label>水源/產地</label><input type="text" id="m_f3" class="form-control" value="${item[3]||''}"></div>
+                    <div class="form-group"><label>描述</label><input type="text" id="m_f4" class="form-control" value="${item[4]||''}"></div>
+                    <div class="form-group"><label>產品圖片</label><input type="file" id="m_img" class="form-control" accept="image/*"></div>
+                `;
+                document.getElementById('modalFooter').innerHTML = `<button class="btn btn-secondary" onclick="closeModal()">取消</button><button class="btn btn-success" onclick="saveModalData()">儲存修改</button>`;
+            }
+
+            document.getElementById('modalFormBody').innerHTML = fieldsHTML;
+            document.getElementById('modalBackdrop').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('modalBackdrop').style.display = 'none'; }
+
+        function saveBatchOrder(targetStatus) {
+            const batchNo = document.getElementById('m_f0').value.trim();
+            const orderNo = document.getElementById('m_f1').value.trim();
+            const clientName = document.getElementById('m_f2').value.trim();
+            const reqQty = Number(document.getElementById('m_f8').value);
+            const gtin = document.getElementById('m_f3').value.trim();
+            const prodDate = document.getElementById('m_f4').value;
+            const expDate = document.getElementById('m_f5').value;
+            const remark = document.getElementById('m_f9').value;
+
+            if(!batchNo || !orderNo || !reqQty) { alert("請填寫完整的批次資訊與數量！"); return; }
+
+            const cleanSerials = db.serials.filter(s => s[3] === "QA回收入庫");
+            const newSerials = db.serials.filter(s => s[3] === "新庫存");
+            const totalAvailable = cleanSerials.length + newSerials.length;
+
+            if (targetStatus === "新建立") {
+                if (totalAvailable < reqQty) {
+                    const missing = reqQty - totalAvailable;
+                    alert(`具備序列號的瓶子數量不足，尚缺少 ${missing} 個，本訂單無法完成生產，請將訂單保存為草稿！`);
+                    return;
+                }
+
+                let remainingToReserve = reqQty;
+                for (let s of cleanSerials) {
+                    if (remainingToReserve <= 0) break;
+                    s[3] = "已預訂";
+                    s[4] = statusToAreaMap["已預訂"];
+                    s[9] = checkIsAvailable("已預訂");
+                    s[10] = CURRENT_TIMESTAMP;
+                    s[7] = batchNo;
+                    remainingToReserve--;
+                }
+
+                if (remainingToReserve > 0) {
+                    for (let s of newSerials) {
+                        if (remainingToReserve <= 0) break;
+                        s[3] = "已預訂";
+                        s[4] = statusToAreaMap["已預訂"];
+                        s[9] = checkIsAvailable("已預訂");
+                        s[10] = CURRENT_TIMESTAMP;
+                        s[7] = batchNo;
+                        remainingToReserve--;
+                    }
+                }
+
+                alert(`成功預訂 ${reqQty} 筆序列號！訂單狀態更新為【新建立】。`);
+            } else if (targetStatus === "草稿") {
+                alert("批次訂單已保存為【草稿】。");
+            }
+
+            const batchRow = [batchNo, orderNo, clientName, gtin, prodDate, expDate, "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=100", targetStatus, reqQty, remark];
+
+            if (currentModalMode === 'add') {
+                db.batches.push(batchRow);
+            } else {
+                db.batches[currentEditIndex] = batchRow;
+            }
+
+            closeModal();
+            renderAll();
+        }
+
+        function saveModalData() {
+            const dbKey = currentModalTarget === 'bottle' ? 'bottles' : 'products';
+            let row = [];
+            if (currentModalTarget === 'bottle') {
+                row = [document.getElementById('m_f0').value, document.getElementById('m_f1').value, Number(document.getElementById('m_f2').value), Number(document.getElementById('m_f3').value), document.getElementById('m_f4').value, Number(document.getElementById('m_f5').value), "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=100"];
+            } else {
+                const existingEsg = (currentModalMode === 'edit' && db.products[currentEditIndex]) ? db.products[currentEditIndex][6] : { raw: 0.45, fill: 0.12, log: 0.18, rec: 0.05, total: 0.80 };
+                row = [document.getElementById('m_f0').value, document.getElementById('m_f1').value, document.getElementById('m_f2').value, document.getElementById('m_f3').value, document.getElementById('m_f4').value, "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=100", existingEsg];
+            }
+            if (currentModalMode === 'add') db[dbKey].push(row);
+            else db[dbKey][currentEditIndex] = row;
+            closeModal();
+            renderAll();
+        }
+
+        function deleteItem(type, index) {
+            if (confirm("確定要刪除這筆資料嗎？")) {
+                db[type].splice(index, 1);
+                renderAll();
+            }
+        }
+
+        function sendToProduction(batchIdx) {
+            const b = db.batches[batchIdx];
+            if (b[7] !== "新建立") { alert("僅有【新建立】狀態的訂單可以發送生產！"); return; }
+
+            if (confirm(`確認要將訂單 ${b[1]} (批次 ${b[0]}) 綁定的序列號發送至生產線開始生產？`)) {
+                const targetSerials = db.serials.filter(s => s[7] === b[0] && s[3] === "已預訂");
+                targetSerials.forEach(s => {
+                    s[3] = "生產中";
+                    s[4] = statusToAreaMap["生產中"];
+                    s[9] = false;
+                    s[10] = CURRENT_TIMESTAMP;
+                });
+
+                b[7] = "已推送至生產線";
+                renderAll();
+                alert(`已成功將 ${targetSerials.length} 筆序列號推送至生產線！訂單狀態更新為【已推送至生產線】。`);
+                downloadBatchSNPackage(b[0]);
+            }
+        }
+
+        function downloadBatchSNPackage(batchNo) {
+            const list = db.serials.filter(s => s[7] === batchNo);
+            if (list.length === 0) { alert("此批次無對應的序列號資料！"); return; }
+
+            const exportData = list.map(s => ({
+                "GRAI代碼": s[0],
+                "序列號": s[1],
+                "GTIN": s[2],
+                "當前狀態": s[3],
+                "存放區域": s[4],
+                "生產批次": s[7],
+                "最新狀態改變時間": s[10]
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "SN_Package");
+            XLSX.writeFile(wb, `Batch_${batchNo}_SN_Package.xlsx`);
+        }
+
+        function queryBatchSNDetail(batchIdx) {
+            const b = db.batches[batchIdx];
+            const st = b[7];
+
+            if (st === "新建立") {
+                alert(`【提示】訂單號: ${b[1]}\n尚未排入生產的訂單沒有分配實體序列號，目前已預訂可用序列號數量：${b[8]} 瓶。`);
+            } else if (st === "草稿") {
+                alert(`【提示】訂單號: ${b[1]}\n草稿訂單沒有分配序列號。`);
+            } else if (st === "異常") {
+                alert(`【警告】訂單號: ${b[1]}\n訂單異常！請處理訂單狀態後，回復到正常狀態再進行查詢。`);
+            } else if (st === "已推送至生產線" || st === "已完成生產") {
+                const list = db.serials.filter(s => s[7] === b[0]);
+                const cleanList = list.filter(s => s[4] === "可灌裝回收物料區" || s[8].includes("回收"));
+                const newList = list.filter(s => !cleanList.includes(s));
+
+                alert(`📦 批次 ${b[0]} 序列號分配明細：\n\n1. 新庫存預計使用數量：${newList.length} 筆\n2. QA回收物料預計使用數量：${cleanList.length} 筆\n\n總計分配：${list.length} 筆`);
+            }
+        }
+
+        function triggerUploadReport(batchNo) {
+            activeUploadBatchNo = batchNo;
+            document.getElementById('batchReportFileInput').click();
+        }
+
+        function handleBatchReportUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                
+                const batchSerials = db.serials.filter(s => s[7] === activeUploadBatchNo && (s[3] === "生產中" || s[3] === "已預訂"));
+
+                if (batchSerials.length === 0) {
+                    const targetAll = db.serials.filter(s => s[7] === activeUploadBatchNo);
+                    simulateReportProcessing(targetAll);
+                    return;
+                }
+
+                simulateReportProcessing(batchSerials);
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
+
+        function simulateReportProcessing(serialList) {
+            let pass = 0, fail = 0, unused = 0, sample = 0, scrap = 0;
+
+            serialList.forEach((s, idx) => {
+                let mod = idx % 20;
+                s[10] = CURRENT_TIMESTAMP;
+
+                if (mod === 18) {
+                    s[3] = "生產不合格";
+                    s[4] = statusToAreaMap["生產不合格"];
+                    s[9] = false;
+                    fail++;
+                } else if (mod === 19) {
+                    s[3] = "已報廢";
+                    s[4] = statusToAreaMap["已報廢"];
+                    s[8] = "生產中報廢";
+                    s[9] = false;
+                    scrap++;
+                } else if (mod === 17) {
+                    s[3] = "樣品";
+                    s[4] = statusToAreaMap["樣品"];
+                    s[8] = "生產中樣品";
+                    s[9] = false;
+                    sample++;
+                } else {
+                    s[3] = "灌裝完成";
+                    s[4] = statusToAreaMap["灌裝完成"];
+                    s[9] = false;
+                    s[5] = Number(s[5]) + 1;
+                    if(!s[11]) s[11] = new Array(30).fill("");
+                    s[11][0] = s[7];
+                    pass++;
+                }
+            });
+
+            const batchObj = db.batches.find(b => b[0] === activeUploadBatchNo);
+            if (batchObj) batchObj[7] = "已完成生產";
+
+            alert(`✅ 批次報告校驗比對成功！數據統計回報：\n\n• 生產已使用 (合格)：${pass} 筆\n• 生產不合格：${fail} 筆\n• 預留/未使用：${unused} 筆\n• 生產中樣品：${sample} 筆\n• 生產中報廢：${scrap} 筆\n\n系統已自動反寫序列號庫存狀態！`);
+            renderAll();
+        }
+
+        // V06.03 消費者護照連動 ESG 展示
+        function queryDPP() {
+            const sn = document.getElementById('frontQueryInput').value.trim().toUpperCase();
+            const item = db.serials.find(s => s[1] === sn || s[0].includes(sn));
+            if(item) {
+                const prod = db.products.find(p => p[0] === item[2]);
+                document.getElementById('dppProdName').innerText = prod ? prod[1] : "天然氣泡微礦泉水 500ml";
+                document.getElementById('dppGrai').innerText = item[0];
+                document.getElementById('dppStatus').innerText = item[3];
+                document.getElementById('dppAvail').innerHTML = item[9] ? "<span style='color:green;'>✔ 可用物料</span>" : "<span style='color:red;'>✘ 不可用物料</span>";
+                document.getElementById('dppLocation').innerText = item[4];
+                document.getElementById('dppCycleCount').innerText = item[5];
+                document.getElementById('dppUpdateTime').innerText = item[10] || CURRENT_TIMESTAMP;
+                document.getElementById('dppBatch').innerText = item[7] || "BATCH-20260801";
+                document.getElementById('dppRemark').innerText = item[8] || "無特殊標註";
+
+                // 展示連動 ESG 碳足跡數據
+                const esg = (prod && prod[6]) ? prod[6] : { raw: 0.45, fill: 0.12, log: 0.18, rec: 0.05, total: 0.80 };
+                document.getElementById('dppEsgTotal').innerText = (esg.total || 0).toFixed(2);
+                document.getElementById('dppEsgRaw').innerText = (esg.raw || 0).toFixed(2);
+                document.getElementById('dppEsgFill').innerText = (esg.fill || 0).toFixed(2);
+                document.getElementById('dppEsgLog').innerText = (esg.log || 0).toFixed(2);
+                document.getElementById('dppEsgRec').innerText = (esg.rec || 0).toFixed(2);
+
+                document.getElementById('dppResult').style.display = 'block';
+            } else {
+                alert("未找到該序列號之 DPP 紀錄！");
+            }
+        }
+
+        window.onload = function() {
+            loadDemoData10000();
+        };
+    </script>
+</body>
+</html>
