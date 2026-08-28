@@ -1,0 +1,5 @@
+key,zh-TW,zh-CN,en
+app_title,循環玻璃瓶裝水數位產品護照管理系統,循环玻璃瓶装水数位产品护照管理系统,Circular Glass Bottled Water DPP Management System
+nav_dashboard,系統總覽,系统总览,Dashboard
+nav_bottle,玻璃瓶容器管理,玻璃瓶容器管理,Bottle Management
+...
