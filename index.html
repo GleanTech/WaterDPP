@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>循環玻璃瓶裝水數位產品護照管理系統 V_dp_09 (20260828)</title>
+    <title>循環玻璃瓶裝水數位產品護照管理系統 V_dp_10 (20260828)</title>
     <!-- 引入 QR Code、SheetJS 與 Chart.js 函式庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -103,8 +103,8 @@
     <!-- 側邊欄 -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <h2>🍃 循環玻璃瓶裝水<br>數位產品護照管理系統 V_dp_09</h2>
-            <div style="margin-top: 8px; font-size: 11px; color: var(--text-sub);">修訂版本時間：V_dp_09 (20260828)</div>
+            <h2>🍃 循環玻璃瓶裝水<br>數位產品護照管理系統 V_dp_10</h2>
+            <div style="margin-top: 8px; font-size: 11px; color: var(--text-sub);">修訂版本時間：V_dp_10 (20260828)</div>
             <div style="margin-top: 10px;">
                 <label style="font-size: 12px; color: var(--text-sub);">當前切換身份：</label>
                 <select id="userRoleSelect" class="form-control" style="margin-top: 4px;" onchange="changeRole()">
@@ -133,7 +133,7 @@
 
         <!-- 頁面 1：系統總覽 -->
         <section id="page1" class="page active">
-            <div class="page-header"><h1>頁面一：系統總覽 (Dashboard V_dp_09)</h1></div>
+            <div class="page-header"><h1>頁面一：系統總覽 (Dashboard V_dp_10)</h1></div>
             <div class="card">
                 <div class="card-title">永續數據與展示資料</div>
                 <button class="btn btn-success" onclick="loadDemoData10000()">⚡ 載入系統預設資料 (10,000筆模擬數據)</button>
@@ -200,7 +200,7 @@
 
         <!-- 頁面 4：產品追溯管理 -->
         <section id="page4" class="page">
-            <div class="page-header"><h1>頁面四：產品追溯管理 (V_dp_09)</h1></div>
+            <div class="page-header"><h1>頁面四：產品追溯管理 (V_dp_10)</h1></div>
             
             <div class="card" style="padding: 16px;">
                 <div class="summary-banner" style="margin-bottom:10px;">
@@ -340,7 +340,7 @@
 
         <!-- 頁面 6：消費者護照查詢 -->
         <section id="page6" class="page">
-            <div class="page-header"><h1>頁面六：消費者護照查詢 (V_dp_09)</h1></div>
+            <div class="page-header"><h1>頁面六：消費者護照查詢 (V_dp_10)</h1></div>
             <div class="card" style="max-width: 520px; margin: auto; text-align: center;">
                 <h2>🍾 數位產品護照 (DPP)</h2>
                 <input type="text" id="frontQueryInput" class="form-control" value="A00001" style="text-align:center; margin-bottom: 12px;">
@@ -535,10 +535,9 @@
     <input type="file" id="batchReportFileInput" style="display:none;" accept=".xlsx, .xls" onchange="handleBatchReportUpload(event)">
 
     <script>
-        // ========== V_dp_09 重要設定 ==========
-        // 請將此 BASE_URL 設定為您實際的 GitHub Pages 根網址（結尾斜線）
-        // 例如：'https://gleantech.github.io/WaterDPP/'
-        const BASE_URL = 'https://gleantech.github.io/WaterDPP/';
+        // ========== V_dp_10 重要設定 ==========
+        // 請將 BASE_URL 設定為您實際的 GitHub Pages 根網址，並包含 index.html
+        const BASE_URL = 'https://gleantech.github.io/WaterDPP/index.html';
         // =====================================
 
         const CURRENT_TIMESTAMP = "20260828";
@@ -682,7 +681,7 @@
         function loadDemoData10000() {
             initSerials10000();
             renderAll();
-            alert("已成功升級並載入 10,000 筆 V_dp_09 模擬數據！");
+            alert("已成功升級並載入 10,000 筆 V_dp_10 模擬數據！");
         }
 
         function switchPage(pageId, evt) {
@@ -1169,8 +1168,8 @@
 
         function generateDigitalLinkQR(gtin, serial) {
             currentActiveSerial = serial;
-            // V_dp_09 使用可配置的 BASE_URL
-            const digitalLinkUrl = `${BASE_URL}01/${gtin}/21/${serial}`;
+            // V_dp_10：改用查詢參數格式，避免 GitHub Pages 路徑 404
+            const digitalLinkUrl = `${BASE_URL}?gtin=${gtin}&serial=${serial}`;
             const container = document.getElementById('qrCodeContainer');
             container.innerHTML = '';
 
@@ -1547,43 +1546,12 @@
 
         // ========== URL 參數自動解析 ==========
         function parseUrlParams() {
-            const path = window.location.pathname;
-            const query = window.location.search;
-            let gtin = null, serial = null;
-
-            // 嘗試解析 GS1 Digital Link 路徑：/01/{gtin}/21/{serial} 或 /gtin/{gtin}/serial/{serial}
-            const pathSegments = path.split('/').filter(seg => seg.length > 0);
-            for (let i = 0; i < pathSegments.length; i++) {
-                if (pathSegments[i] === '01' && i + 1 < pathSegments.length) {
-                    gtin = pathSegments[i + 1];
-                    // 搜尋後面的 21 片段
-                    for (let j = i + 2; j < pathSegments.length; j++) {
-                        if (pathSegments[j] === '21' && j + 1 < pathSegments.length) {
-                            serial = pathSegments[j + 1];
-                            break;
-                        }
-                    }
-                    break;
-                }
-                // 也支援簡寫：/gtin/{gtin}/serial/{serial}
-                if (pathSegments[i].toLowerCase() === 'gtin' && i + 1 < pathSegments.length) {
-                    gtin = pathSegments[i + 1];
-                }
-                if (pathSegments[i].toLowerCase() === 'serial' && i + 1 < pathSegments.length) {
-                    serial = pathSegments[i + 1];
-                }
-            }
-
-            // 若路徑未找到，嘗試 query string (?gtin=...&serial=...)
-            if (!gtin || !serial) {
-                const params = new URLSearchParams(query);
-                gtin = gtin || params.get('gtin');
-                serial = serial || params.get('serial');
-            }
+            const params = new URLSearchParams(window.location.search);
+            const gtin = params.get('gtin');
+            const serial = params.get('serial');
 
             if (gtin && serial) {
                 console.log('自動解析到 GTIN:', gtin, 'Serial:', serial);
-                // 切換到消費者護照頁面並查詢
                 switchPage('page6');
                 document.getElementById('frontQueryInput').value = serial;
                 queryDPP();
