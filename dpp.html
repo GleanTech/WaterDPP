@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数位产品护照 - 瓶装水</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "Segoe UI", "Microsoft JhengHei", sans-serif;
+            background: #f4f6f9;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 6px;
+        }
+        .header .serial {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .content {
+            padding: 30px;
+        }
+        .status-box {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .status-expired {
+            background: #ffebee;
+            color: #d32f2f;
+            border: 1px solid #ffcdd2;
+        }
+        .status-valid {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .info-table th, .info-table td {
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .info-table th {
+            background: #fafafa;
+            width: 35%;
+            color: #555;
+            font-weight: 600;
+        }
+        .docs-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+        .docs-section h3 {
+            margin-bottom: 15px;
+            color: #1e3c72;
+        }
+        .doc-link {
+            display: inline-block;
+            margin: 5px;
+            padding: 10px 18px;
+            background: #f0f4ff;
+            border: 1px solid #c5d4f5;
+            border-radius: 6px;
+            color: #2a5298;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .doc-link:hover {
+            background: #e0e9ff;
+        }
+        .error-message {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .btn-back {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #2a5298;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>数位产品护照</h1>
+            <div class="serial" id="headerSerial">载入中...</div>
+        </div>
+        <div class="content" id="content">
+            <div class="error-message">正在读取产品资料...</div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ---- 1. 从 URL 中提取 GTIN 和序列号 ----
+            function parseDigitalLink() {
+                const url = new URL(window.location.href);
+                let gtin = null;
+                let serial = null;
+
+                // 优先尝试查询参数 ?01=... &21=...
+                gtin = url.searchParams.get('01') || url.searchParams.get('gtin');
+                serial = url.searchParams.get('21') || url.searchParams.get('serial');
+
+                // 如果查询参数没有，尝试从路径中解析 /01/.../21/...
+                if (!gtin || !serial) {
+                    const pathParts = url.pathname.split('/').filter(part => part !== '');
+                    // 找到 '01' 后面跟着的是 gtin，'21' 后面跟着的是 serial
+                    for (let i = 0; i < pathParts.length; i++) {
+                        if (pathParts[i] === '01' && i + 1 < pathParts.length) {
+                            gtin = pathParts[i + 1];
+                        }
+                        if (pathParts[i] === '21' && i + 1 < pathParts.length) {
+                            serial = pathParts[i + 1];
+                        }
+                    }
+                }
+
+                // 后备：尝试 ?grai= 完整 GRAI 字符串（格式：GTIN + 序列号，需要知道分割点）
+                if (!gtin || !serial) {
+                    const grai = url.searchParams.get('grai');
+                    if (grai) {
+                        // 假设 GRAI 由 14 位 GTIN + 序列号组成
+                        if (grai.length >= 14) {
+                            gtin = grai.substring(0, 14);
+                            serial = grai.substring(14);
+                        } else {
+                            gtin = grai;
+                            serial = '';
+                        }
+                    }
+                }
+
+                return { gtin, serial };
+            }
+
+            // ---- 2. 读取 Excel 文件 ----
+            async function loadExcel(filePath) {
+                const response = await fetch(filePath);
+                if (!response.ok) {
+                    throw new Error(`无法读取 ${filePath}，请确认档案已上传。`);
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                return XLSX.utils.sheet_to_json(sheet);
+            }
+
+            // ---- 3. 查找序列号信息 ----
+            async function findSerialInfo(gtin, serial) {
+                const serials = await loadExcel('./data/serials.xlsx');
+                // 如果 URL 中没解析出序列号，显示错误
+                if (!serial) {
+                    return { found: false, message: '未提供有效序列号。' };
+                }
+                // 支持完整序列号或仅序列号部分匹配（有些系统可能只用序列号）
+                const record = serials.find(row => {
+                    const rowSerial = String(row.serial_number).trim();
+                    // 如果 rowSerial 包含 gtin 前缀，则完全匹配；否则看是否以 serial 结尾
+                    if (rowSerial.includes(gtin)) {
+                        return rowSerial === gtin + serial || rowSerial === serial;
+                    } else {
+                        return rowSerial === serial;
+                    }
+                });
+                return record ? { found: true, record } : { found: false, message: '找不到对应的序列号资料。' };
+            }
+
+            // ---- 4. 查找批次和产品信息 ----
+            async function getBatchInfo(batchNo) {
+                if (!batchNo) return null;
+                const batches = await loadExcel('./data/batches.xlsx');
+                return batches.find(b => String(b.batch_no).trim() === String(batchNo).trim());
+            }
+
+            async function getProductInfo(productId) {
+                if (!productId) return null;
+                const products = await loadExcel('./data/products.xlsx');
+                return products.find(p => String(p.product_id).trim() === String(productId).trim());
+            }
+
+            // ---- 5. 显示结果 ----
+            function renderStatus(record) {
+                const statusBox = document.createElement('div');
+                const expiryDate = record.current_expiry_date ? new Date(record.current_expiry_date) : null;
+                const today = new Date();
+                const isValid = expiryDate && expiryDate >= today;
+                
+                statusBox.className = 'status-box ' + (isValid ? 'status-valid' : 'status-expired');
+                statusBox.textContent = isValid ? '产品在质保中' : '产品已过期';
+                return statusBox;
+            }
+
+            function renderInfoTable(data) {
+                const table = document.createElement('table');
+                table.className = 'info-table';
+                const rows = [
+                    ['序列号', data.serial_number || '未知'],
+                    ['GTIN', data.gtin14 || '未知'],
+                    ['产品名称', data.product_name || '未知'],
+                    ['品牌', data.brand || '未知'],
+                    ['生产商', data.manufacturer || '未知'],
+                    ['水源地', data.water_source || '未知'],
+                    ['容量', data.volume_ml ? data.volume_ml + ' ml' : '未知'],
+                    ['矿物质信息', data.mineral_content || '未知'],
+                    ['生产日期', data.production_date || '未知'],
+                    ['到期日', data.current_expiry_date || '未知'],
+                    ['批次号', data.current_batch_no || '未知'],
+                    ['订单号', data.current_order_no || '未知'],
+                    ['累计灌装次数', data.fill_count ?? '0'],
+                    ['累计回收次数', data.recycle_count ?? '0'],
+                    ['最近灌装日期', data.last_filled_date || '未知'],
+                    ['最近回收日期', data.last_recycled_date || '未知']
+                ];
+                rows.forEach(([label, value]) => {
+                    const tr = document.createElement('tr');
+                    const th = document.createElement('th');
+                    th.textContent = label;
+                    const td = document.createElement('td');
+                    td.textContent = value;
+                    tr.appendChild(th);
+                    tr.appendChild(td);
+                    table.appendChild(tr);
+                });
+                return table;
+            }
+
+            function renderDocs(docsFolder) {
+                if (!docsFolder) return null;
+                // 假设 docsFolder 类似 "/uploads/batch-docs/2026-B001"
+                // 实际 PDF 文件需要手动列出，这里仅示范一个常见文件
+                const section = document.createElement('div');
+                section.className = 'docs-section';
+                const h3 = document.createElement('h3');
+                h3.textContent = '质检报告与相关文件';
+                section.appendChild(h3);
+                
+                // 注意：静态空间下无法自动列出目录内的所有 PDF，因此我们需要知道具体文件名。
+                // 这里假设每个批次至少有一个 "质检报告.pdf"，你可以根据实际命名调整。
+                const commonFiles = ['质检报告.pdf', '质量证书.pdf', '检测报告.pdf'];
+                let hasLink = false;
+                commonFiles.forEach(file => {
+                    // 构建相对路径，需要注意中文字符可能需要 encodeURIComponent
+                    const fileUrl = encodeURI(docsFolder + '/' + file);
+                    const link = document.createElement('a');
+                    link.className = 'doc-link';
+                    link.href = fileUrl;
+                    link.textContent = file;
+                    link.target = '_blank';
+                    section.appendChild(link);
+                    hasLink = true;
+                });
+                if (!hasLink) {
+                    const p = document.createElement('p');
+                    p.textContent = '暂无上传文件。';
+                    section.appendChild(p);
+                }
+                return section;
+            }
+
+            async function init() {
+                const content = document.getElementById('content');
+                try {
+                    const { gtin, serial } = parseDigitalLink();
+                    document.getElementById('headerSerial').textContent = serial ? `序列号: ${serial}` : '未提供序列号';
+
+                    const { found, record, message } = await findSerialInfo(gtin, serial);
+                    if (!found) {
+                        content.innerHTML = `<div class="error-message">${message}</div>`;
+                        return;
+                    }
+
+                    // 取得批次和产品扩展信息
+                    const batchInfo = await getBatchInfo(record.current_batch_no);
+                    const productInfo = await getProductInfo(record.current_product_id);
+                    
+                    // 合并记录与扩展信息
+                    const merged = {
+                        ...record,
+                        ...(batchInfo || {}),
+                        ...(productInfo || {})
+                    };
+
+                    // 清空内容区
+                    content.innerHTML = '';
+                    content.appendChild(renderStatus(merged));
+                    content.appendChild(renderInfoTable(merged));
+                    
+                    // 如果有批次文件夹，添加文件下载区
+                    const docsSection = renderDocs(batchInfo?.docs_folder);
+                    if (docsSection) content.appendChild(docsSection);
+
+                } catch (err) {
+                    console.error(err);
+                    content.innerHTML = `<div class="error-message">${err.message || '发生错误，请稍后再试。'}</div>`;
+                }
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
