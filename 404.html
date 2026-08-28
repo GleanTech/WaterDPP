@@ -2,40 +2,50 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>載入中...</title>
+    <title>正在載入產品護照...</title>
     <script>
-        // 將標準路徑 /01/{gtin}/21/{serial} 轉換為查詢字串
         (function() {
-            const path = window.location.pathname;
-            const segments = path.split('/').filter(s => s.length > 0);
-            let gtin = null, serial = null;
+            const path = window.location.pathname;  // 例如 /WaterDPP/01/04712345678901/21/A00001
 
-            for (let i = 0; i < segments.length; i++) {
-                if (segments[i] === '01' && i + 1 < segments.length) {
-                    gtin = segments[i + 1];
-                    // 尋找後面的 21 片段
-                    for (let j = i + 2; j < segments.length; j++) {
-                        if (segments[j] === '21' && j + 1 < segments.length) {
-                            serial = segments[j + 1];
-                            break;
-                        }
-                    }
-                    break;
+            // 將路徑分割成陣列，過濾空字串
+            const segments = path.split('/').filter(s => s.length > 0);
+
+            let gtin = null;
+            let serial = null;
+            let basePath = '/';
+
+            // 找出 01 與 21 的位置
+            let idx01 = segments.indexOf('01');
+            if (idx01 !== -1 && idx01 + 1 < segments.length) {
+                gtin = segments[idx01 + 1];
+                // 從 01 之後找 21
+                let idx21 = segments.indexOf('21', idx01 + 2);
+                if (idx21 !== -1 && idx21 + 1 < segments.length) {
+                    serial = segments[idx21 + 1];
                 }
             }
 
-            if (gtin && serial) {
-                // 跳轉到 index.html 並帶上參數
-                const base = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
-                window.location.href = base + 'index.html?gtin=' + encodeURIComponent(gtin) + '&serial=' + encodeURIComponent(serial);
+            // 計算基礎路徑（從開頭到 01 之前的部分）
+            if (idx01 > 0) {
+                // 例如 segments = ["WaterDPP", "01", ...]，則基礎路徑為 "/WaterDPP/"
+                basePath = '/' + segments.slice(0, idx01).join('/') + '/';
             } else {
-                // 若無效路徑，導回首頁
-                window.location.href = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/') + 'index.html';
+                // 若沒有子目錄，就是根目錄
+                basePath = '/';
             }
+
+            // 構建目標網址
+            let targetUrl = window.location.origin + basePath + 'index.html';
+            if (gtin && serial) {
+                targetUrl += '?gtin=' + encodeURIComponent(gtin) + '&serial=' + encodeURIComponent(serial);
+            }
+
+            // 執行跳轉
+            window.location.replace(targetUrl);
         })();
     </script>
 </head>
 <body>
-    <p>正在載入產品護照...</p>
+    <p>正在載入產品護照，請稍候...</p>
 </body>
 </html>
