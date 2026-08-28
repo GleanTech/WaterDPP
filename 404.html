@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>載入中...</title>
+    <script>
+        // 將標準路徑 /01/{gtin}/21/{serial} 轉換為查詢字串
+        (function() {
+            const path = window.location.pathname;
+            const segments = path.split('/').filter(s => s.length > 0);
+            let gtin = null, serial = null;
+
+            for (let i = 0; i < segments.length; i++) {
+                if (segments[i] === '01' && i + 1 < segments.length) {
+                    gtin = segments[i + 1];
+                    // 尋找後面的 21 片段
+                    for (let j = i + 2; j < segments.length; j++) {
+                        if (segments[j] === '21' && j + 1 < segments.length) {
+                            serial = segments[j + 1];
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+
+            if (gtin && serial) {
+                // 跳轉到 index.html 並帶上參數
+                const base = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
+                window.location.href = base + 'index.html?gtin=' + encodeURIComponent(gtin) + '&serial=' + encodeURIComponent(serial);
+            } else {
+                // 若無效路徑，導回首頁
+                window.location.href = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/') + 'index.html';
+            }
+        })();
+    </script>
+</head>
+<body>
+    <p>正在載入產品護照...</p>
+</body>
+</html>
