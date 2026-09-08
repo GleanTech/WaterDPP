@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>循環玻璃瓶裝水數位產品護照管理系統 V_dp_10 (20260828)</title>
+    <title>循環玻璃瓶裝水數位產品護照管理系統 V_dp_11 (20260908)</title>
     <!-- 引入 QR Code、SheetJS 與 Chart.js 函式庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -96,6 +96,53 @@
         .esg-box { background: #f0fdf4; border: 1px dashed #22c55e; border-radius: 10px; padding: 12px 16px; margin-top: 10px; }
         .esg-box h4 { margin: 0 0 8px 0; color: #15803d; font-size: 14px; display: flex; align-items: center; gap: 6px; }
         .esg-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+        /* ========== 消費者模式專用樣式 ========== */
+        body.consumer-mode {
+            display: block;
+            background: #ffffff;
+        }
+        body.consumer-mode .sidebar {
+            display: none;
+        }
+        body.consumer-mode .main-content {
+            padding: 0;
+            margin: 0;
+            overflow-y: auto;
+        }
+        body.consumer-mode .page-header {
+            display: none;
+        }
+        body.consumer-mode .page {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        body.consumer-mode #page6 .card {
+            background: #ffffff;
+            box-shadow: none;
+            border: none;
+            text-align: center;
+            padding: 20px 10px;
+        }
+        body.consumer-mode #frontQueryInput,
+        body.consumer-mode button[onclick="queryDPP()"] {
+            display: none;
+        }
+        body.consumer-mode #dppProductImage {
+            max-width: 200px;
+            height: auto;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        body.consumer-mode #dppResult {
+            text-align: left;
+        }
+        body.consumer-mode #dppResult .esg-box {
+            background: #f0fdf4;
+            border: 1px dashed #22c55e;
+        }
     </style>
 </head>
 <body>
@@ -103,8 +150,8 @@
     <!-- 側邊欄 -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <h2>🍃 循環玻璃瓶裝水<br>數位產品護照管理系統 V_dp_10</h2>
-            <div style="margin-top: 8px; font-size: 11px; color: var(--text-sub);">修訂版本時間：20260828</div>
+            <h2>🍃 循環玻璃瓶裝水<br>數位產品護照管理系統 V_dp_11</h2>
+            <div style="margin-top: 8px; font-size: 11px; color: var(--text-sub);">修訂版本時間：20260908</div>
             <div style="margin-top: 10px;">
                 <label style="font-size: 12px; color: var(--text-sub);">當前切換身份：</label>
                 <select id="userRoleSelect" class="form-control" style="margin-top: 4px;" onchange="changeRole()">
@@ -133,7 +180,7 @@
 
         <!-- 頁面 1：系統總覽 -->
         <section id="page1" class="page active">
-            <div class="page-header"><h1>頁面一：系統總覽 (Dashboard V_dp_10)</h1></div>
+            <div class="page-header"><h1>頁面一：系統總覽 (Dashboard V_dp_11)</h1></div>
             <div class="card">
                 <div class="card-title">永續數據與展示資料</div>
                 <button class="btn btn-success" onclick="loadDemoData10000()">⚡ 載入系統預設資料 (10,000筆模擬數據)</button>
@@ -200,7 +247,7 @@
 
         <!-- 頁面 4：產品追溯管理 -->
         <section id="page4" class="page">
-            <div class="page-header"><h1>頁面四：產品追溯管理 (V_dp_10)</h1></div>
+            <div class="page-header"><h1>頁面四：產品追溯管理 (V_dp_11)</h1></div>
             
             <div class="card" style="padding: 16px;">
                 <div class="summary-banner" style="margin-bottom:10px;">
@@ -340,13 +387,17 @@
 
         <!-- 頁面 6：消費者護照查詢 -->
         <section id="page6" class="page">
-            <div class="page-header"><h1>頁面六：消費者護照查詢 (V_dp_10)</h1></div>
+            <div class="page-header"><h1>頁面六：消費者護照查詢 (V_dp_11)</h1></div>
             <div class="card" style="max-width: 520px; margin: auto; text-align: center;">
                 <h2>🍾 數位產品護照 (DPP)</h2>
                 <input type="text" id="frontQueryInput" class="form-control" value="A00001" style="text-align:center; margin-bottom: 12px;">
                 <button class="btn btn-success" style="width:100%; justify-content:center;" onclick="queryDPP()">📱 查詢護照履歷</button>
                 <div id="dppResult" style="margin-top:20px; text-align:left; display:none;">
                     <hr style="border:0; border-top:1px solid var(--border-light);">
+                    <!-- 新增：產品圖片 -->
+                    <div style="text-align:center; margin-bottom: 15px;">
+                        <img id="dppProductImage" src="" alt="產品圖片" style="max-width:200px; height:auto; border-radius:12px; display:none;">
+                    </div>
                     <p><strong>產品名稱：</strong> <span id="dppProdName"></span></p>
                     <p><strong>GRAI 代碼：</strong> <span id="dppGrai"></span></p>
                     <p><strong>瓶子當前狀態：</strong> <span id="dppStatus" style="font-weight:bold; color:var(--primary-blue);"></span></p>
@@ -535,9 +586,9 @@
     <input type="file" id="batchReportFileInput" style="display:none;" accept=".xlsx, .xls" onchange="handleBatchReportUpload(event)">
 
     <script>
-        // ========== V_dp_10 穩定版 ==========
+        // ========== V_dp_11 設定 ==========
         const BASE_URL = 'https://gleantech.github.io/WaterDPP/index.html'; // 請改為實際部署網址
-        const CURRENT_TIMESTAMP = "20260828";
+        const CURRENT_TIMESTAMP = "20260908";
         const PAGE_SIZE = 200;
 
         const statusToAreaMap = {
@@ -666,7 +717,7 @@
         function loadDemoData10000() {
             initSerials10000();
             renderAll();
-            alert("已成功升級並載入 10,000 筆 V_dp_10 模擬數據！");
+            alert("已成功升級並載入 10,000 筆 V_dp_11 模擬數據！");
         }
 
         function switchPage(pageId, evt) {
@@ -1062,7 +1113,7 @@
 
         function generateDigitalLinkQR(gtin, serial) {
             currentActiveSerial = serial;
-            // V_dp_10：改用查詢參數格式，避免 GitHub Pages 路徑 404
+            // V_dp_11：改用查詢參數格式，避免 GitHub Pages 路徑 404
             const digitalLinkUrl = `${BASE_URL}?gtin=${gtin}&serial=${serial}`;
             const container = document.getElementById('qrCodeContainer');
             container.innerHTML = '';
@@ -1310,6 +1361,14 @@
             const item = db.serials.find(s => s[1] === sn || s[0].includes(sn));
             if (!item) { alert("未找到該序列號之 DPP 紀錄！"); return; }
             const prod = db.products.find(p => p[0] === item[2]);
+            // 顯示產品圖片
+            const productImage = document.getElementById('dppProductImage');
+            if (prod && prod[5]) {
+                productImage.src = prod[5];
+                productImage.style.display = 'block';
+            } else {
+                productImage.style.display = 'none';
+            }
             document.getElementById('dppProdName').innerText = prod ? prod[1] : "天然氣泡微礦泉水 500ml";
             document.getElementById('dppGrai').innerText = item[0];
             document.getElementById('dppStatus').innerText = item[3];
@@ -1348,13 +1407,18 @@
             }
         }
 
-        // URL 參數解析
-        function parseUrlParams() {
+        // ========== 消費者模式偵測 ==========
+        function parseUrlParamsAndApplyMode() {
             const params = new URLSearchParams(window.location.search);
             const gtin = params.get('gtin');
             const serial = params.get('serial');
             if (gtin && serial) {
+                // 進入消費者模式
+                document.body.classList.add('consumer-mode');
+                // 隱藏側邊欄（由 CSS 處理）
+                // 只顯示 page6
                 switchPage('page6');
+                // 自動填入 serial 並查詢
                 document.getElementById('frontQueryInput').value = serial;
                 queryDPP();
             }
@@ -1362,7 +1426,7 @@
 
         window.onload = function() {
             loadDemoData10000();
-            parseUrlParams();
+            parseUrlParamsAndApplyMode();
         };
     </script>
 </body>
