@@ -586,23 +586,97 @@
     <input type="file" id="batchReportFileInput" style="display:none;" accept=".xlsx, .xls" onchange="handleBatchReportUpload(event)">
 
     <script>
-        // ========== V_dp_10 多語言版 ==========
-        const BASE_URL = 'https://gleantech.github.io/WaterDPP/index.html'; // 請修改為實際網址
+        // ========== 設定 ==========
+        const BASE_URL = 'https://gleantech.github.io/WaterDPP/index.html'; // 請改為實際網址
         const LANGUAGE_FILE = '/langlanguage/language.xlsx'; // 語言檔路徑
         const DEFAULT_LANG = 'zh-TW';
         let currentLang = DEFAULT_LANG;
-        let translations = {}; // 儲存所有翻譯，格式：{ key: { 'zh-TW': '...', 'zh-CN': '...', 'en': '...' } }
+        let translations = {};
 
         const CURRENT_TIMESTAMP = "20260828";
         const PAGE_SIZE = 200;
 
-        // ...（以下與原 V_dp_10 相同的所有程式碼，但需修改動態文字處以使用 t() 函數）
-        // 由於篇幅限制，此處不再重複完整程式碼，請將原 V_dp_10 的 JavaScript 部分複製過來，
-        // 並將所有動態生成的字串中的中文替換為 t('key') 調用。
-        // 例如：原本的 `alert("已成功...")` 改為 `alert(t('msg_success'))` 等。
-        // 所有在 HTML 中已用 data-i18n 標記的靜態文本無需再改。
+        const statusToAreaMap = {
+            "新庫存": "新物料庫存區",
+            "已預訂": "可灌裝回收物料區",
+            "生產中": "生產線",
+            "生產不合格": "生產線待撿區",
+            "灌裝完成": "成品等待QA質檢區",
+            "QA完成可出貨": "成品可出貨區",
+            "通路銷售中": "市場流通中",
+            "已回收未清洗": "回收暫存區",
+            "清洗完成": "已清洗回收暫存區",
+            "QA回收入庫": "可灌裝回收物料區",
+            "已報廢": "報廢區",
+            "樣品": "樣品留樣區"
+        };
 
-        // ========== 多語言核心函數 ==========
+        const statusColorMap = {
+            "新庫存": { bg: "#e3f2fd", color: "#0d47a1" },
+            "已預訂": { bg: "#fff3e0", color: "#e65100" },
+            "生產中": { bg: "#e8eaf6", color: "#1a237e" },
+            "生產不合格": { bg: "#ffebee", color: "#b71c1c" },
+            "灌裝完成": { bg: "#e0f2f1", color: "#004d40" },
+            "QA完成可出貨": { bg: "#e8f5e9", color: "#1b5e20" },
+            "通路銷售中": { bg: "#f3e5f5", color: "#4a148c" },
+            "已回收未清洗": { bg: "#fff8e1", color: "#f57f17" },
+            "清洗完成": { bg: "#e0f7fa", color: "#006064" },
+            "QA回收入庫": { bg: "#c8e6c9", color: "#2e7d32" },
+            "已報廢": { bg: "#efebe9", color: "#3e2723" },
+            "樣品": { bg: "#fce4ec", color: "#880e4f" }
+        };
+
+        const areaColorMap = {
+            "新物料庫存區": { bg: "#e1f5fe", color: "#01579b" },
+            "可灌裝回收物料區": { bg: "#f1f8e9", color: "#33691e" },
+            "生產線": { bg: "#ede7f6", color: "#4a148c" },
+            "生產線待撿區": { bg: "#fbe9e7", color: "#bf360c" },
+            "成品等待QA質檢區": { bg: "#e0f2f1", color: "#004d40" },
+            "成品可出貨區": { bg: "#dcedc8", color: "#1b5e20" },
+            "市場流通中": { bg: "#f3e5f5", color: "#6a1b9a" },
+            "回收暫存區": { bg: "#fffde7", color: "#f57f17" },
+            "已清洗回收暫存區": { bg: "#e0f7fa", color: "#00838f" },
+            "報廢區": { bg: "#d7ccc8", color: "#4e342e" },
+            "樣品留樣區": { bg: "#f8bbd0", color: "#880e4f" }
+        };
+
+        const all12Statuses = [
+            "新庫存", "已預訂", "生產中", "生產不合格", 
+            "灌裝完成", "QA完成可出貨", "通路銷售中", "已回收未清洗", 
+            "清洗完成", "QA回收入庫", "已報廢", "樣品"
+        ];
+
+        let currentRole = "Admin";
+        let activeUploadBatchNo = "";
+        let selectedSNSet = new Set();
+        let filteredSerials = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let pieChartInstance = null;
+        let sortState = { serials: { col: -1, asc: true }, batches: { col: -1, asc: true } };
+
+        let db = {
+            bottles: [
+                ["BOT-330ML-STD", "330ml 輕量標準玻璃瓶", 330, 250, "60mm x 210mm", 25, "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=100"],
+                ["BOT-500ML-STD", "500ml 經典特厚玻璃瓶", 500, 380, "70mm x 240mm", 30, "https://images.unsplash.com/photo-1589365278144-c9e705f843ba?w=100"],
+                ["BOT-750ML-PRE", "750ml 頂級餐飲氣泡瓶", 750, 520, "82mm x 295mm", 20, "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=100"]
+            ],
+            products: [
+                ["04712345678901", "天然氣泡微礦泉水 500ml", "BOT-500ML-STD", "雪山山脈天然湧泉", "微氣泡口感，富含天然偏矽酸", "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=100", { raw: 0.45, fill: 0.12, log: 0.18, rec: 0.05, total: 0.80 }],
+                ["04712345678925", "頂級佐餐氣泡水 750ml", "BOT-750ML-PRE", "中央山脈高海拔水源", "極致細緻氣泡，佐餐首選", "https://images.unsplash.com/photo-1589365278144-c9e705f843ba?w=100", { raw: 0.60, fill: 0.15, log: 0.22, rec: 0.08, total: 1.05 }]
+            ],
+            batches: [
+                ["BATCH-20260801", "ORD-2026-088", "台灣好水連鎖餐飲", "04712345678901", "2026-08-01", "2027-08-01", "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=100", "已完成生產", 100, "第一批次順利完工"],
+                ["BATCH-20260814", "ORD-2026-090", "誠品行旅", "04712345678925", "2026-08-14", "2027-08-14", "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=100", "新建立", 50, "急件訂單"],
+                ["BATCH-20260815", "ORD-2026-091", "全家便利商店", "04712345678901", "2026-08-15", "2027-08-15", "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=100", "草稿", 200, "待客戶確認數量"]
+            ],
+            serials: []
+        };
+
+        let currentActiveSerial = '';
+        let editingSerialIdx = -1;
+
+        // ========== 多語言函數 ==========
         async function loadLanguage(lang) {
             try {
                 const response = await fetch(LANGUAGE_FILE);
@@ -610,81 +684,171 @@
                 const workbook = XLSX.read(data, { type: 'array' });
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                
-                // 第一行為表頭，跳過
-                const headers = json[0]; // ['key', 'zh-TW', 'zh-CN', 'en']
+                const headers = json[0]; // ['key','zh-TW','zh-CN','en']
                 translations = {};
                 for (let i = 1; i < json.length; i++) {
                     const row = json[i];
                     if (!row || row.length < 4) continue;
-                    const key = row[0];
-                    translations[key] = {
-                        'zh-TW': row[1] || '',
-                        'zh-CN': row[2] || '',
-                        'en': row[3] || ''
-                    };
+                    translations[row[0]] = { 'zh-TW': row[1] || '', 'zh-CN': row[2] || '', 'en': row[3] || '' };
                 }
                 currentLang = lang;
                 applyLanguage(lang);
             } catch (error) {
-                console.error('加載語言檔失敗，使用預設繁體中文。', error);
-                // 若載入失敗，使用瀏覽器預設繁體中文，但頁面中已存在的繁體中文文本會保留
+                console.error('Failed to load language file, using default zh-TW.', error);
                 currentLang = DEFAULT_LANG;
                 applyLanguage(DEFAULT_LANG);
             }
         }
 
         function applyLanguage(lang) {
-            // 更新所有帶有 data-i18n 屬性的元素
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
-                if (translations[key] && translations[key][lang]) {
-                    el.textContent = translations[key][lang];
-                }
+                if (translations[key] && translations[key][lang]) el.textContent = translations[key][lang];
             });
-
-            // 更新 placeholder 屬性
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                 const key = el.getAttribute('data-i18n-placeholder');
-                if (translations[key] && translations[key][lang]) {
-                    el.placeholder = translations[key][lang];
-                }
+                if (translations[key] && translations[key][lang]) el.placeholder = translations[key][lang];
             });
-
-            // 更新語言按鈕 active 狀態
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.lang === lang);
-            });
-
-            // 重新渲染動態內容（表格、統計等）
-            if (typeof renderAll === 'function') {
-                renderAll();
-            }
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.lang === lang));
+            // 重繪動態內容
+            if (typeof renderAll === 'function') renderAll();
         }
 
-        // 翻譯函數，供動態內容使用
         function t(key) {
-            if (translations[key] && translations[key][currentLang]) {
-                return translations[key][currentLang];
-            }
-            return key; // 如果沒有翻譯則回傳鍵名
+            if (translations[key] && translations[key][currentLang]) return translations[key][currentLang];
+            return key;
         }
 
         function switchLanguage(lang) {
-            if (lang !== currentLang) {
-                loadLanguage(lang);
-            }
+            if (lang !== currentLang) loadLanguage(lang);
         }
 
-        // ========== 以下為原 V_dp_10 的完整 JavaScript，但需修改動態文本 ==========
-        // 由於篇幅限制，此處省略，請將原程式碼複製並修改。
-        // 修改重點：
-        // 1. 所有直接寫在字串中的中文（如 alert('...')、innerHTML 中的中文）改為 t('key')。
-        // 2. 在渲染函數中，使用 t() 取得翻譯。
-        // 3. 確保在 window.onload 中先加載語言再初始化數據。
+        // ========== 核心功能函數 ==========
+        function changeRole() {
+            currentRole = document.getElementById('userRoleSelect').value;
+            applySerialFilters();
+            renderBatchTable(db.batches);
+        }
 
-        // 示例（僅示範，實際需完整替換）：
-        /*
+        function checkIsAvailable(status) { return (status === "新庫存" || status === "QA回收入庫"); }
+
+        function initSerials10000() {
+            db.serials = [];
+            selectedSNSet.clear();
+            const gtinList = ["04712345678901", "04712345678925"];
+            const batchList = ["BATCH-20260801", "BATCH-20260814"];
+            for (let i = 1; i <= 10000; i++) {
+                let sn = "A" + String(i).padStart(5, '0');
+                let gtin = gtinList[(i - 1) % 2];
+                let batch = batchList[(i - 1) % 2];
+                let status = all12Statuses[(i - 1) % 12];
+                let area = statusToAreaMap[status];
+                let fillCount = ((i * 2) % 10) + 1;
+                let recycleCount = fillCount > 1 ? fillCount - 1 : 0;
+                let grai = `00047123456789018003${sn}`;
+                let isAvail = checkIsAvailable(status);
+                let remark = (status === "樣品") ? "QA抽樣保留件，需定期進行瓶身應力測試" : (status === "已報廢" ? "瓶口微裂報廢，已標記移至廢棄物處理區" : "系統自動初始化預設追溯數據");
+                let updateTime = CURRENT_TIMESTAMP;
+                let historyBatches = new Array(30).fill("");
+                if (["灌裝完成", "QA完成可出貨", "通路銷售中"].includes(status)) historyBatches[0] = batch;
+                db.serials.push([grai, sn, gtin, status, area, fillCount, recycleCount, batch, remark, isAvail, updateTime, historyBatches]);
+            }
+            initAreaFilterOptions();
+            updateSelectedCountUI();
+        }
+
+        function initAreaFilterOptions() {
+            const areaSelect = document.getElementById('areaFilterSelect');
+            areaSelect.innerHTML = '<option value="">' + t('option_all_area') + '</option>';
+            Object.values(statusToAreaMap).filter((v, i, a) => a.indexOf(v) === i).forEach(area => {
+                areaSelect.innerHTML += `<option value="${area}">${area}</option>`;
+            });
+        }
+
+        function loadDemoData10000() {
+            initSerials10000();
+            renderAll();
+            alert(t('msg_load_demo_success'));
+        }
+
+        function switchPage(pageId, evt) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.sidebar-nav li').forEach(li => li.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            document.getElementById('nav-' + pageId).classList.add('active');
+        }
+
+        function calculateStatistics() {
+            const counts = {};
+            all12Statuses.forEach(st => counts[st] = 0);
+            let availTotal = 0, unavailTotal = 0;
+            db.serials.forEach(s => {
+                counts[s[3]]++;
+                s[9] ? availTotal++ : unavailTotal++;
+            });
+            return { statusCounts: counts, availTotal, unavailTotal, grandTotal: db.serials.length };
+        }
+
+        function renderStatisticsUI() {
+            const stats = calculateStatistics();
+            document.getElementById('dashAvailCount').innerText = stats.availTotal.toLocaleString();
+            document.getElementById('dashUnavailCount').innerText = stats.unavailTotal.toLocaleString();
+            document.getElementById('dashTotalCount').innerText = stats.grandTotal.toLocaleString();
+            document.getElementById('topAvailCount').innerText = stats.availTotal.toLocaleString();
+            document.getElementById('topUnavailCount').innerText = stats.unavailTotal.toLocaleString();
+            document.getElementById('topTotalCount').innerText = stats.grandTotal.toLocaleString();
+
+            const gridHTML = all12Statuses.map(st => {
+                const colorObj = statusColorMap[st];
+                const label = t('status_' + st) || st; // 使用翻譯後的狀態名稱
+                return `<div class="status-card" style="background-color:${colorObj.bg}; border-color:rgba(0,0,0,0.06);">
+                    <div class="title" style="color:${colorObj.color};">${label}</div>
+                    <div class="num" style="color:${colorObj.color};">${(stats.statusCounts[st] || 0).toLocaleString()}</div>
+                </div>`;
+            }).join('');
+            document.getElementById('dashStatusGrid').innerHTML = gridHTML;
+            document.getElementById('topStatusGrid').innerHTML = gridHTML;
+            renderPieChart(stats.statusCounts);
+        }
+
+        function renderPieChart(statusCounts) {
+            const ctx = document.getElementById('statusPieChart');
+            if(!ctx) return;
+            const labels = all12Statuses.map(st => t('status_' + st) || st);
+            const data = labels.map((_, i) => statusCounts[all12Statuses[i]] || 0);
+            const bgColors = all12Statuses.map(st => statusColorMap[st].bg);
+            const borderColors = all12Statuses.map(st => statusColorMap[st].color);
+            if (pieChartInstance) pieChartInstance.destroy();
+            pieChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: { labels, datasets: [{ data, backgroundColor: bgColors, borderColor: borderColors, borderWidth: 1.5 }] },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a,b)=>a+b,0);
+                                    const pct = total > 0 ? ((val/total)*100).toFixed(1) : 0;
+                                    return `${context.label}: ${val.toLocaleString()} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderAll() {
+            renderStatisticsUI();
+            renderBottleTable();
+            renderProductTable();
+            renderBatchTable(db.batches);
+            applySerialFilters();
+        }
+
         function renderBottleTable() {
             const tbody = document.querySelector('#bottleTable tbody');
             tbody.innerHTML = db.bottles.map((b, idx) => `
@@ -698,13 +862,612 @@
                 </tr>
             `).join('');
         }
-        */
 
-        // ========== 初始化 ==========
+        function renderProductTable() {
+            const tbody = document.querySelector('#productTable tbody');
+            tbody.innerHTML = db.products.map((p, idx) => {
+                let esgObj = p[6] || { total: 0.80 };
+                return `
+                <tr>
+                    <td><img src="${p[5] || ''}" class="img-thumb"></td>
+                    <td>${p[0]}</td><td><strong>${p[1]}</strong></td><td>${p[2]}</td><td>${p[3]}</td><td>${p[4]}</td>
+                    <td><span style="font-weight:700; color:#15803d;">${(esgObj.total || 0).toFixed(2)} kgCO₂e</span></td>
+                    <td>
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn btn-success" style="font-size:11px;" onclick="openEsgModal(${idx})">🌱 ${t('esg_modal_title')}</button>
+                            <button class="btn btn-secondary" style="font-size:11px;" onclick="openModal('product', 'edit', ${idx})">${t('btn_edit')}</button>
+                            <button class="btn btn-danger" style="font-size:11px;" onclick="deleteItem('products', ${idx})">${t('btn_delete')}</button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        function applySerialFilters() {
+            const statusFilter = document.getElementById('statusFilterSelect').value;
+            const areaFilter = document.getElementById('areaFilterSelect').value;
+            const keyword = document.getElementById('searchInput').value.trim().toUpperCase();
+            filteredSerials = db.serials.filter(s => {
+                const matchStatus = !statusFilter || s[3] === statusFilter;
+                const matchArea = !areaFilter || s[4] === areaFilter;
+                const matchKeyword = !keyword || (s[1].toUpperCase().includes(keyword) || s[0].toUpperCase().includes(keyword));
+                return matchStatus && matchArea && matchKeyword;
+            });
+            currentPage = 1;
+            renderPagedSerialsTable();
+        }
+
+        function renderPagedSerialsTable() {
+            totalPages = Math.ceil(filteredSerials.length / PAGE_SIZE) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            const startIndex = (currentPage - 1) * PAGE_SIZE;
+            const pageData = filteredSerials.slice(startIndex, startIndex + PAGE_SIZE);
+            const sBody = document.querySelector('#serialTable tbody');
+            sBody.innerHTML = pageData.map((s) => {
+                let realIdx = db.serials.findIndex(item => item[1] === s[1]);
+                let sn = s[1];
+                let isChecked = selectedSNSet.has(sn) ? 'checked' : '';
+                let availBadge = s[9] ? `<span class="badge-status" style="background:#e8f5e9; color:#2e7d32;">${t('label_avail_yes') || '✔'}</span>` : `<span class="badge-status" style="background:#ffebee; color:#c62828;">${t('label_avail_no') || '✘'}</span>`;
+                let stStyle = statusColorMap[s[3]] || { bg: '#e3f2fd', color: '#0d47a1' };
+                let statusLabel = t('status_' + s[3]) || s[3];
+                let statusBadge = `<span class="badge-status" style="background:${stStyle.bg}; color:${stStyle.color};">${statusLabel}</span>`;
+                let arStyle = areaColorMap[s[4]] || { bg: '#f3e5f5', color: '#4a148c' };
+                let areaBadge = `<span class="badge-status" style="background:${arStyle.bg}; color:${arStyle.color};">${s[4]}</span>`;
+                return `
+                <tr>
+                    <td style="text-align:center;"><input type="checkbox" class="sn-checkbox" data-sn="${sn}" ${isChecked} onchange="toggleSelectSN('${sn}', this.checked)"></td>
+                    <td>${s[0]}</td>
+                    <td><button class="btn btn-success" style="font-size:11px; padding:3px 6px;" onclick="generateDigitalLinkQR('${s[2]}', '${sn}')">📱 ${t('btn_qr_generate')}</button></td>
+                    <td><strong>${sn}</strong></td>
+                    <td>${s[2]}</td>
+                    <td>${statusBadge}</td>
+                    <td>${availBadge}</td>
+                    <td>${areaBadge}</td>
+                    <td>${s[5]}</td>
+                    <td>${s[6]}</td>
+                    <td>${s[7]}</td>
+                    <td><small>${s[10] || ''}</small></td>
+                    <td><small>${s[8] || ''}</small></td>
+                    <td><button class="btn btn-secondary" style="font-size:11px; padding:3px 6px;" onclick="openStatusModal(${realIdx})">✏️ ${t('btn_status_change')}</button></td>
+                </tr>
+            `}).join('');
+            updatePaginationControls(startIndex, pageData.length);
+            updateSelectAllCheckboxState(pageData);
+        }
+
+        function toggleSelectSN(sn, isChecked) {
+            isChecked ? selectedSNSet.add(sn) : selectedSNSet.delete(sn);
+            updateSelectedCountUI();
+        }
+
+        function toggleSelectAllCurrentPage(masterCb) {
+            const startIndex = (currentPage - 1) * PAGE_SIZE;
+            const pageData = filteredSerials.slice(startIndex, startIndex + PAGE_SIZE);
+            pageData.forEach(s => {
+                if (masterCb.checked) selectedSNSet.add(s[1]);
+                else selectedSNSet.delete(s[1]);
+            });
+            document.querySelectorAll('.sn-checkbox').forEach(cb => cb.checked = masterCb.checked);
+            updateSelectedCountUI();
+        }
+
+        function updateSelectAllCheckboxState(pageData) {
+            const masterCb = document.getElementById('selectAllCheckbox');
+            if (!masterCb || pageData.length === 0) return;
+            masterCb.checked = pageData.every(s => selectedSNSet.has(s[1]));
+        }
+
+        function updateSelectedCountUI() {
+            const count = selectedSNSet.size;
+            document.getElementById('selectedCountText').innerText = t('selected_count').replace('{0}', count.toLocaleString());
+        }
+
+        function openBatchStatusModal() {
+            if (selectedSNSet.size === 0) {
+                alert(t('msg_no_selection'));
+                return;
+            }
+            document.getElementById('batchModalSelectedCount').innerText = selectedSNSet.size.toLocaleString();
+            onBatchStatusSelectChange();
+            document.getElementById('batchStatusModalBackdrop').style.display = 'flex';
+        }
+
+        function closeBatchStatusModal() { document.getElementById('batchStatusModalBackdrop').style.display = 'none'; }
+
+        function onBatchStatusSelectChange() {
+            const st = document.getElementById('batchStatusSelect').value;
+            document.getElementById('batchModalArea').value = statusToAreaMap[st] || "";
+            document.getElementById('batchModalAvailText').value = checkIsAvailable(st) ? t('label_avail_yes') : t('label_avail_no');
+        }
+
+        function saveBatchStatusChange() {
+            const newStatus = document.getElementById('batchStatusSelect').value;
+            const newArea = document.getElementById('batchModalArea').value;
+            const newRemark = document.getElementById('batchModalRemark').value.trim();
+            if (newStatus === "樣品" && currentRole !== "Admin" && currentRole !== "QA") {
+                alert(t('msg_permission_denied_sample'));
+                return;
+            }
+            if (!confirm(t('msg_confirm_batch_update').replace('{0}', selectedSNSet.size.toLocaleString()).replace('{1}', newStatus))) return;
+            let updatedCount = 0;
+            db.serials.forEach(s => {
+                if (selectedSNSet.has(s[1])) {
+                    s[3] = newStatus;
+                    s[4] = newArea;
+                    s[9] = checkIsAvailable(newStatus);
+                    s[10] = CURRENT_TIMESTAMP;
+                    if (newRemark) s[8] = newRemark;
+                    updatedCount++;
+                }
+            });
+            closeBatchStatusModal();
+            selectedSNSet.clear();
+            renderAll();
+            alert(t('msg_batch_update_success').replace('{0}', updatedCount.toLocaleString()));
+        }
+
+        function updatePaginationControls(startIndex, countOnPage) {
+            const totalCount = filteredSerials.length;
+            const startNum = totalCount === 0 ? 0 : startIndex + 1;
+            const endNum = startIndex + countOnPage;
+            document.getElementById('paginationInfo').innerText = t('pagination_info').replace('{0}', startNum.toLocaleString()).replace('{1}', endNum.toLocaleString()).replace('{2}', totalCount.toLocaleString());
+            const btnContainer = document.getElementById('pageButtons');
+            btnContainer.innerHTML = '';
+            let startP = Math.max(1, currentPage - 2);
+            let endP = Math.min(totalPages, startP + 4);
+            if (endP - startP < 4) startP = Math.max(1, endP - 4);
+            for (let i = startP; i <= endP; i++) {
+                const btn = document.createElement('button');
+                btn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                btn.innerText = i;
+                btn.onclick = () => goToPage(i);
+                btnContainer.appendChild(btn);
+            }
+        }
+
+        function goToPage(p) { if (p >= 1 && p <= totalPages) { currentPage = p; renderPagedSerialsTable(); } }
+        function prevPage() { if (currentPage > 1) { currentPage--; renderPagedSerialsTable(); } }
+        function nextPage() { if (currentPage < totalPages) { currentPage++; renderPagedSerialsTable(); } }
+
+        function searchSerial() { applySerialFilters(); }
+        function clearSerialSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilterSelect').value = '';
+            document.getElementById('areaFilterSelect').value = '';
+            applySerialFilters();
+        }
+
+        function renderBatchTable(data) {
+            const btBody = document.querySelector('#batchTable tbody');
+            btBody.innerHTML = data.map((bt) => {
+                let realIdx = db.batches.findIndex(item => item[0] === bt[0]);
+                let status = bt[7];
+                let canSendProd = (status === "新建立");
+                let canUploadReport = (status === "已推送至生產線");
+                let canDetail = (status === "已推送至生產線" || status === "已完成生產");
+                let snXlsxLink = (status === "已推送至生產線" || status === "已完成生產") ? `<a href="#" onclick="downloadBatchSNPackage('${bt[0]}')">📥 ${t('btn_sn_download')}</a>` : `<span style="color:var(--text-sub); font-size:11px;">${t('sn_not_generated')}</span>`;
+                return `
+                <tr>
+                    <td><img src="${bt[6] || ''}" class="img-thumb"></td>
+                    <td><strong>${bt[0]}</strong></td>
+                    <td>${bt[1]}</td>
+                    <td>${bt[2]}</td>
+                    <td><span class="badge-status" style="background:#fff3e0; color:#e65100;">${t('batch_' + status) || status}</span></td>
+                    <td><strong>${bt[8] || 0}</strong> 瓶</td>
+                    <td>${bt[3]}</td>
+                    <td>${bt[4]}</td>
+                    <td><small>${bt[9] || ''}</small></td>
+                    <td>${snXlsxLink}</td>
+                    <td>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                            <button class="btn ${canSendProd ? 'btn-success' : 'btn-disabled'}" ${canSendProd ? '' : 'disabled'} onclick="sendToProduction(${realIdx})">🚀 ${t('btn_send_prod')}</button>
+                            <button class="btn ${canDetail ? '' : 'btn-disabled'}" ${canDetail ? '' : 'disabled'} onclick="queryBatchSNDetail(${realIdx})">🔍 ${t('btn_query_detail')}</button>
+                            <button class="btn btn-secondary ${canUploadReport ? '' : 'btn-disabled'}" ${canUploadReport ? '' : 'disabled'} onclick="triggerUploadReport('${bt[0]}')">📤 ${t('btn_upload_report')}</button>
+                            <button class="btn btn-secondary" style="font-size:11px;" onclick="openModal('batch', 'edit', ${realIdx})">${t('btn_edit')}</button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        function searchBatchOrder() {
+            const q = document.getElementById('batchSearchInput').value.trim().toUpperCase();
+            if(!q) return;
+            const res = db.batches.filter(b => b[1].toUpperCase().includes(q) || b[2].includes(q) || b[0].toUpperCase().includes(q));
+            renderBatchTable(res);
+        }
+
+        function clearBatchSearch() {
+            document.getElementById('batchSearchInput').value = '';
+            document.getElementById('batchStatusFilter').value = '';
+            renderBatchTable(db.batches);
+        }
+
+        function filterBatchTable() {
+            const st = document.getElementById('batchStatusFilter').value;
+            if(!st) { renderBatchTable(db.batches); return; }
+            renderBatchTable(db.batches.filter(b => b[7] === st));
+        }
+
+        function openStatusModal(index) {
+            editingSerialIdx = index;
+            const item = db.serials[index];
+            document.getElementById('statusModalSN').value = item[1];
+            document.getElementById('statusModalSelect').value = item[3];
+            document.getElementById('statusModalArea').value = item[4];
+            document.getElementById('statusModalRemark').value = item[8] || '';
+            document.getElementById('statusModalAvailText').value = item[9] ? t('label_avail_yes') : t('label_avail_no');
+            document.getElementById('sampleOption').disabled = !(currentRole === "Admin" || currentRole === "QA");
+            document.getElementById('statusModalBackdrop').style.display = 'flex';
+        }
+
+        function onStatusSelectChange() {
+            const st = document.getElementById('statusModalSelect').value;
+            document.getElementById('statusModalArea').value = statusToAreaMap[st] || "";
+            document.getElementById('statusModalAvailText').value = checkIsAvailable(st) ? t('label_avail_yes') : t('label_avail_no');
+        }
+
+        function closeStatusModal() { document.getElementById('statusModalBackdrop').style.display = 'none'; }
+
+        function saveStatusChange() {
+            if (editingSerialIdx < 0) return;
+            const newStatus = document.getElementById('statusModalSelect').value;
+            const newArea = document.getElementById('statusModalArea').value;
+            const newRemark = document.getElementById('statusModalRemark').value;
+            if (newStatus === "樣品" && currentRole !== "Admin" && currentRole !== "QA") {
+                alert(t('msg_permission_denied_sample'));
+                return;
+            }
+            db.serials[editingSerialIdx][3] = newStatus;
+            db.serials[editingSerialIdx][4] = newArea;
+            db.serials[editingSerialIdx][8] = newRemark;
+            db.serials[editingSerialIdx][9] = checkIsAvailable(newStatus);
+            db.serials[editingSerialIdx][10] = CURRENT_TIMESTAMP;
+            closeStatusModal();
+            renderAll();
+            alert(t('msg_status_updated'));
+        }
+
+        let editingEsgProductIndex = -1;
+        function openEsgModal(prodIndex) {
+            editingEsgProductIndex = prodIndex;
+            const prod = db.products[prodIndex];
+            const esg = prod[6] || { raw: 0.45, fill: 0.12, log: 0.18, rec: 0.05, total: 0.80 };
+            document.getElementById('esgProductGtin').value = prod[0];
+            document.getElementById('esgRaw').value = esg.raw || 0;
+            document.getElementById('esgFill').value = esg.fill || 0;
+            document.getElementById('esgLog').value = esg.log || 0;
+            document.getElementById('esgRec').value = esg.rec || 0;
+            calcEsgTotal();
+            document.getElementById('esgModalBackdrop').style.display = 'flex';
+        }
+
+        function closeEsgModal() { document.getElementById('esgModalBackdrop').style.display = 'none'; }
+
+        function calcEsgTotal() {
+            const raw = parseFloat(document.getElementById('esgRaw').value) || 0;
+            const fill = parseFloat(document.getElementById('esgFill').value) || 0;
+            const log = parseFloat(document.getElementById('esgLog').value) || 0;
+            const rec = parseFloat(document.getElementById('esgRec').value) || 0;
+            document.getElementById('esgTotalVal').value = `${(raw+fill+log+rec).toFixed(2)} kgCO₂e`;
+        }
+
+        function saveEsgData() {
+            if (editingEsgProductIndex < 0) return;
+            const raw = parseFloat(document.getElementById('esgRaw').value) || 0;
+            const fill = parseFloat(document.getElementById('esgFill').value) || 0;
+            const log = parseFloat(document.getElementById('esgLog').value) || 0;
+            const rec = parseFloat(document.getElementById('esgRec').value) || 0;
+            db.products[editingEsgProductIndex][6] = { raw, fill, log, rec, total: raw+fill+log+rec };
+            closeEsgModal();
+            renderAll();
+            alert(t('msg_esg_updated'));
+        }
+
+        function generateDigitalLinkQR(gtin, serial) {
+            currentActiveSerial = serial;
+            const digitalLinkUrl = `${BASE_URL}?gtin=${gtin}&serial=${serial}`;
+            const container = document.getElementById('qrCodeContainer');
+            container.innerHTML = '';
+            new QRCode(container, {
+                text: digitalLinkUrl,
+                width: 170, height: 170,
+                colorDark: "#000000", colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            document.getElementById('qrLinkUrl').innerText = digitalLinkUrl;
+            document.getElementById('qrModalBackdrop').style.display = 'flex';
+        }
+
+        function closeQRModal() { document.getElementById('qrModalBackdrop').style.display = 'none'; }
+
+        function downloadQRJpg() {
+            const qrCanvas = document.querySelector('#qrCodeContainer canvas');
+            if(!qrCanvas) { alert(t('msg_qr_generating')); return; }
+            const link = document.createElement('a');
+            link.download = `DigitalLink_${currentActiveSerial}.jpg`;
+            link.href = qrCanvas.toDataURL("image/jpeg", 0.95);
+            link.click();
+        }
+
+        function jumpToPassportFromQR() {
+            closeQRModal();
+            document.getElementById('frontQueryInput').value = currentActiveSerial;
+            switchPage('page6');
+            queryDPP();
+        }
+
+        let currentModalTarget = '', currentModalMode = 'add', currentEditIndex = -1;
+
+        function openModal(target, mode, index = -1) {
+            currentModalTarget = target;
+            currentModalMode = mode;
+            currentEditIndex = index;
+            const titleKey = mode === 'add' ? (target === 'bottle' ? 'btn_add_bottle' : target === 'product' ? 'btn_add_product' : 'btn_add_batch') : (target === 'bottle' ? 'th_bottle_name' : target === 'product' ? 'th_product_name' : 'th_batch_no');
+            document.getElementById('modalTitle').innerText = mode === 'add' ? t(titleKey) : t('btn_edit') + ' ' + t(titleKey);
+            let fieldsHTML = '';
+            let item = mode === 'edit' ? (target === 'bottle' ? db.bottles[index] : target === 'product' ? db.products[index] : db.batches[index]) : [];
+            if (target === 'batch') {
+                const totalClean = db.serials.filter(s => s[3] === "QA回收入庫").length;
+                const totalNew = db.serials.filter(s => s[3] === "新庫存").length;
+                const totalReserved = db.serials.filter(s => s[3] === "已預訂").length;
+                const totalAvailable = totalClean + totalNew;
+                fieldsHTML = `
+                    <div style="background:#e8f5e9; padding:10px; border-radius:8px; font-size:12px; margin-bottom:12px;">
+                        <strong>📦 ${t('available_stock_title')}</strong><br>
+                        • ${t('qa_return_stock')}：${totalClean}<br>
+                        • ${t('new_stock')}：${totalNew}<br>
+                        • ${t('reserved_stock')}：${totalReserved}<br>
+                        👉 ${t('total_available')}：<strong>${totalAvailable}</strong>
+                    </div>
+                    <div class="form-group"><label>${t('batch_no')}</label><input type="text" id="m_f0" class="form-control" value="${item[0]||'BATCH-'+Date.now().toString().slice(-6)}"></div>
+                    <div class="form-group"><label>${t('order_no')}</label><input type="text" id="m_f1" class="form-control" value="${item[1]||'ORD-2026-099'}"></div>
+                    <div class="form-group"><label>${t('client_name')}</label><input type="text" id="m_f2" class="form-control" value="${item[2]||'台鐵便當/餐飲部'}"></div>
+                    <div class="form-group"><label>${t('req_qty')}</label><input type="number" id="m_f8" class="form-control" value="${item[8]||50}"></div>
+                    <div class="form-group"><label>GTIN</label><input type="text" id="m_f3" class="form-control" value="${item[3]||'04712345678901'}"></div>
+                    <div class="form-group"><label>${t('prod_date')}</label><input type="date" id="m_f4" class="form-control" value="${item[4]||'2026-08-14'}"></div>
+                    <div class="form-group"><label>${t('exp_date')}</label><input type="date" id="m_f5" class="form-control" value="${item[5]||'2027-08-14'}"></div>
+                    <div class="form-group"><label>${t('order_remark')}</label><textarea id="m_f9" class="form-control" rows="2">${item[9]||''}</textarea></div>
+                    <div class="form-group"><label>${t('batch_image')}</label><input type="file" id="m_img" class="form-control" accept="image/*"></div>
+                `;
+                document.getElementById('modalFooter').innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeModal()">${t('btn_cancel')}</button>
+                    <button class="btn btn-secondary" onclick="saveBatchOrder('草稿')">💾 ${t('save_draft')}</button>
+                    <button class="btn btn-success" onclick="saveBatchOrder('新建立')">${t('confirm_new_batch')}</button>
+                `;
+            } else if (target === 'bottle') {
+                fieldsHTML = `
+                    <div class="form-group"><label>${t('bottle_code')}</label><input type="text" id="m_f0" class="form-control" value="${item[0]||''}"></div>
+                    <div class="form-group"><label>${t('bottle_name')}</label><input type="text" id="m_f1" class="form-control" value="${item[1]||''}"></div>
+                    <div class="form-group"><label>${t('capacity')}</label><input type="number" id="m_f2" class="form-control" value="${item[2]||''}"></div>
+                    <div class="form-group"><label>${t('weight')}</label><input type="number" id="m_f3" class="form-control" value="${item[3]||''}"></div>
+                    <div class="form-group"><label>${t('dimensions')}</label><input type="text" id="m_f4" class="form-control" value="${item[4]||''}"></div>
+                    <div class="form-group"><label>${t('max_cycles')}</label><input type="number" id="m_f5" class="form-control" value="${item[5]||''}"></div>
+                    <div class="form-group"><label>${t('image')}</label><input type="file" id="m_img" class="form-control" accept="image/*"></div>
+                `;
+                document.getElementById('modalFooter').innerHTML = `<button class="btn btn-secondary" onclick="closeModal()">${t('btn_cancel')}</button><button class="btn btn-success" onclick="saveModalData()">${t('btn_save')}</button>`;
+            } else if (target === 'product') {
+                fieldsHTML = `
+                    <div class="form-group"><label>GTIN</label><input type="text" id="m_f0" class="form-control" value="${item[0]||''}"></div>
+                    <div class="form-group"><label>${t('product_name')}</label><input type="text" id="m_f1" class="form-control" value="${item[1]||''}"></div>
+                    <div class="form-group"><label>${t('bottle_code')}</label><input type="text" id="m_f2" class="form-control" value="${item[2]||''}"></div>
+                    <div class="form-group"><label>${t('water_source')}</label><input type="text" id="m_f3" class="form-control" value="${item[3]||''}"></div>
+                    <div class="form-group"><label>${t('description')}</label><input type="text" id="m_f4" class="form-control" value="${item[4]||''}"></div>
+                    <div class="form-group"><label>${t('image')}</label><input type="file" id="m_img" class="form-control" accept="image/*"></div>
+                `;
+                document.getElementById('modalFooter').innerHTML = `<button class="btn btn-secondary" onclick="closeModal()">${t('btn_cancel')}</button><button class="btn btn-success" onclick="saveModalData()">${t('btn_save')}</button>`;
+            }
+            document.getElementById('modalFormBody').innerHTML = fieldsHTML;
+            document.getElementById('modalBackdrop').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('modalBackdrop').style.display = 'none'; }
+
+        function saveBatchOrder(targetStatus) {
+            const batchNo = document.getElementById('m_f0').value.trim();
+            const orderNo = document.getElementById('m_f1').value.trim();
+            const clientName = document.getElementById('m_f2').value.trim();
+            const reqQty = Number(document.getElementById('m_f8').value);
+            const gtin = document.getElementById('m_f3').value.trim();
+            const prodDate = document.getElementById('m_f4').value;
+            const expDate = document.getElementById('m_f5').value;
+            const remark = document.getElementById('m_f9').value;
+            if(!batchNo || !orderNo || !reqQty) { alert(t('fill_required')); return; }
+            const cleanSerials = db.serials.filter(s => s[3] === "QA回收入庫");
+            const newSerials = db.serials.filter(s => s[3] === "新庫存");
+            const totalAvailable = cleanSerials.length + newSerials.length;
+            if (targetStatus === "新建立") {
+                if (totalAvailable < reqQty) {
+                    alert(t('msg_insufficient_stock').replace('{0}', reqQty - totalAvailable));
+                    return;
+                }
+                let remaining = reqQty;
+                for (let s of cleanSerials) {
+                    if (remaining <= 0) break;
+                    s[3] = "已預訂"; s[4] = statusToAreaMap["已預訂"]; s[9] = false; s[10] = CURRENT_TIMESTAMP; s[7] = batchNo;
+                    remaining--;
+                }
+                if (remaining > 0) {
+                    for (let s of newSerials) {
+                        if (remaining <= 0) break;
+                        s[3] = "已預訂"; s[4] = statusToAreaMap["已預訂"]; s[9] = false; s[10] = CURRENT_TIMESTAMP; s[7] = batchNo;
+                        remaining--;
+                    }
+                }
+                alert(t('msg_order_created').replace('{0}', reqQty));
+            } else {
+                alert(t('msg_order_draft'));
+            }
+            const batchRow = [batchNo, orderNo, clientName, gtin, prodDate, expDate, "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=100", targetStatus, reqQty, remark];
+            if (currentModalMode === 'add') db.batches.push(batchRow); else db.batches[currentEditIndex] = batchRow;
+            closeModal();
+            renderAll();
+        }
+
+        function saveModalData() {
+            const dbKey = currentModalTarget === 'bottle' ? 'bottles' : 'products';
+            let row = [];
+            if (currentModalTarget === 'bottle') {
+                row = [document.getElementById('m_f0').value, document.getElementById('m_f1').value, Number(document.getElementById('m_f2').value), Number(document.getElementById('m_f3').value), document.getElementById('m_f4').value, Number(document.getElementById('m_f5').value), "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=100"];
+            } else {
+                const existingEsg = (currentModalMode === 'edit' && db.products[currentEditIndex]) ? db.products[currentEditIndex][6] : { raw: 0.45, fill: 0.12, log: 0.18, rec: 0.05, total: 0.80 };
+                row = [document.getElementById('m_f0').value, document.getElementById('m_f1').value, document.getElementById('m_f2').value, document.getElementById('m_f3').value, document.getElementById('m_f4').value, "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=100", existingEsg];
+            }
+            if (currentModalMode === 'add') db[dbKey].push(row); else db[dbKey][currentEditIndex] = row;
+            closeModal();
+            renderAll();
+        }
+
+        function deleteItem(type, index) {
+            if (confirm(t('confirm_delete'))) {
+                db[type].splice(index, 1);
+                renderAll();
+            }
+        }
+
+        function sendToProduction(batchIdx) {
+            const b = db.batches[batchIdx];
+            if (b[7] !== "新建立") { alert(t('msg_invalid_order_status')); return; }
+            if (confirm(t('confirm_send_production').replace('{0}', b[1]).replace('{1}', b[0]))) {
+                const targetSerials = db.serials.filter(s => s[7] === b[0] && s[3] === "已預訂");
+                targetSerials.forEach(s => {
+                    s[3] = "生產中"; s[4] = statusToAreaMap["生產中"]; s[9] = false; s[10] = CURRENT_TIMESTAMP;
+                });
+                b[7] = "已推送至生產線";
+                renderAll();
+                alert(t('msg_production_sent').replace('{0}', targetSerials.length));
+                downloadBatchSNPackage(b[0]);
+            }
+        }
+
+        function downloadBatchSNPackage(batchNo) {
+            const list = db.serials.filter(s => s[7] === batchNo);
+            if (list.length === 0) { alert(t('msg_batch_no_serial')); return; }
+            const exportData = list.map(s => ({
+                "GRAI代碼": s[0], "序列號": s[1], "GTIN": s[2], "當前狀態": s[3], "存放區域": s[4], "生產批次": s[7], "最新狀態改變時間": s[10]
+            }));
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "SN_Package");
+            XLSX.writeFile(wb, `Batch_${batchNo}_SN_Package.xlsx`);
+        }
+
+        function queryBatchSNDetail(batchIdx) {
+            const b = db.batches[batchIdx];
+            const st = b[7];
+            let msg = '';
+            if (st === "新建立") msg = t('msg_order_detail_new').replace('{0}', b[1]).replace('{1}', b[8]);
+            else if (st === "草稿") msg = t('msg_order_detail_draft').replace('{0}', b[1]);
+            else if (st === "異常") msg = t('msg_order_detail_abnormal').replace('{0}', b[1]);
+            else if (st === "已推送至生產線" || st === "已完成生產") {
+                const list = db.serials.filter(s => s[7] === b[0]);
+                const cleanList = list.filter(s => s[4] === "可灌裝回收物料區" || s[8].includes("回收"));
+                const newList = list.filter(s => !cleanList.includes(s));
+                msg = t('msg_order_detail_prod').replace('{0}', b[0]).replace('{1}', newList.length).replace('{2}', cleanList.length).replace('{3}', list.length);
+            }
+            alert(msg);
+        }
+
+        function triggerUploadReport(batchNo) {
+            activeUploadBatchNo = batchNo;
+            document.getElementById('batchReportFileInput').click();
+        }
+
+        function handleBatchReportUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const batchSerials = db.serials.filter(s => s[7] === activeUploadBatchNo && (s[3] === "生產中" || s[3] === "已預訂"));
+                if (batchSerials.length === 0) {
+                    const targetAll = db.serials.filter(s => s[7] === activeUploadBatchNo);
+                    simulateReportProcessing(targetAll);
+                } else {
+                    simulateReportProcessing(batchSerials);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
+
+        function simulateReportProcessing(serialList) {
+            let pass=0, fail=0, unused=0, sample=0, scrap=0;
+            serialList.forEach((s, idx) => {
+                let mod = idx % 20;
+                s[10] = CURRENT_TIMESTAMP;
+                if (mod === 18) { s[3]="生產不合格"; s[4]=statusToAreaMap["生產不合格"]; s[9]=false; fail++; }
+                else if (mod === 19) { s[3]="已報廢"; s[4]=statusToAreaMap["已報廢"]; s[8]="生產中報廢"; s[9]=false; scrap++; }
+                else if (mod === 17) { s[3]="樣品"; s[4]=statusToAreaMap["樣品"]; s[8]="生產中樣品"; s[9]=false; sample++; }
+                else { s[3]="灌裝完成"; s[4]=statusToAreaMap["灌裝完成"]; s[9]=false; s[5]=Number(s[5])+1; if(!s[11]) s[11]=new Array(30).fill(""); s[11][0]=s[7]; pass++; }
+            });
+            const batchObj = db.batches.find(b => b[0] === activeUploadBatchNo);
+            if (batchObj) batchObj[7] = "已完成生產";
+            const msg = t('msg_report_processed').replace('{0}', pass).replace('{1}', fail).replace('{2}', unused).replace('{3}', sample).replace('{4}', scrap);
+            alert(msg);
+            renderAll();
+        }
+
+        function queryDPP() {
+            const sn = document.getElementById('frontQueryInput').value.trim().toUpperCase();
+            const item = db.serials.find(s => s[1] === sn || s[0].includes(sn));
+            if (!item) { alert(t('msg_serial_not_found')); return; }
+            const prod = db.products.find(p => p[0] === item[2]);
+            document.getElementById('dppProdName').innerText = prod ? prod[1] : "天然氣泡微礦泉水 500ml";
+            document.getElementById('dppGrai').innerText = item[0];
+            document.getElementById('dppStatus').innerText = t('status_' + item[3]) || item[3];
+            document.getElementById('dppAvail').innerHTML = item[9] ? `<span style="color:green;">${t('label_avail_yes')}</span>` : `<span style="color:red;">${t('label_avail_no')}</span>`;
+            document.getElementById('dppLocation').innerText = item[4];
+            document.getElementById('dppCycleCount').innerText = item[5];
+            document.getElementById('dppUpdateTime').innerText = item[10] || CURRENT_TIMESTAMP;
+            document.getElementById('dppBatch').innerText = item[7] || "BATCH-20260801";
+            document.getElementById('dppRemark').innerText = item[8] || "無特殊標註";
+            const esg = (prod && prod[6]) ? prod[6] : { raw:0.45, fill:0.12, log:0.18, rec:0.05, total:0.80 };
+            document.getElementById('dppEsgTotal').innerText = (esg.total||0).toFixed(2);
+            document.getElementById('dppEsgRaw').innerText = (esg.raw||0).toFixed(2);
+            document.getElementById('dppEsgFill').innerText = (esg.fill||0).toFixed(2);
+            document.getElementById('dppEsgLog').innerText = (esg.log||0).toFixed(2);
+            document.getElementById('dppEsgRec').innerText = (esg.rec||0).toFixed(2);
+            document.getElementById('dppResult').style.display = 'block';
+        }
+
+        function compareVal(a, b, dir) {
+            if (typeof a === 'number' && typeof b === 'number') return (a - b) * dir;
+            if (typeof a === 'boolean' && typeof b === 'boolean') return ((a?1:0) - (b?1:0)) * dir;
+            return String(a ?? '').localeCompare(String(b ?? ''), 'zh-Hant') * dir;
+        }
+
+        function sortTable(type, colIndex) {
+            const state = sortState[type];
+            if (state.col === colIndex) state.asc = !state.asc; else { state.col = colIndex; state.asc = true; }
+            const dir = state.asc ? 1 : -1;
+            if (type === 'serials') {
+                filteredSerials.sort((a,b) => compareVal(a[colIndex], b[colIndex], dir));
+                currentPage = 1;
+                renderPagedSerialsTable();
+            } else if (type === 'batches') {
+                db.batches.sort((a,b) => compareVal(a[colIndex], b[colIndex], dir));
+                renderBatchTable(db.batches);
+            }
+        }
+
+        // URL 參數解析
+        function parseUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const gtin = params.get('gtin');
+            const serial = params.get('serial');
+            if (gtin && serial) {
+                switchPage('page6');
+                document.getElementById('frontQueryInput').value = serial;
+                queryDPP();
+            }
+        }
+
+        // 初始化
         window.onload = async function() {
             await loadLanguage(DEFAULT_LANG);
-            // 確保翻譯加載完成後再載入演示數據
-            loadDemoData10000();
+            loadDemoData10000(); // 載入演示數據
             parseUrlParams();
         };
     </script>
