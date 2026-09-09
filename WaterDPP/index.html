@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>循環玻璃瓶裝水數位產品護照管理系統 V_dp_15 (20260908)</title>
+    <!-- 引入 QR Code、SheetJS 與 Chart.js 函式庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ========== 基本樣式（與 V_dp_14 相同） ========== */
+        :root {
+            --bg-color: #f2f7f5;
+            --sidebar-bg: rgba(235, 245, 240, 0.85);
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --primary-blue: #007aff;
+            --eco-green: #34c759;
+            --text-main: #1c1c1e;
+            --text-sub: #8e8e93;
+            --border-light: rgba(60, 60, 67, 0.12);
+            --ios-radius: 14px;
+            --ios-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            --sidebar-width: 260px;
+        }
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+        .sidebar { width: var(--sidebar-width); background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-right: 1px solid var(--border-light); display: flex; flex-direction: column; flex-shrink: 0; z-index: 1000; }
+        .sidebar-header { padding: 24px 20px 16px; }
+        .sidebar-header h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text-main); line-height: 1.4; }
+        .sidebar-nav ul { list-style: none; padding: 0 10px; margin: 0; }
+        .sidebar-nav li { display: flex; align-items: center; padding: 12px 14px; margin-bottom: 4px; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; font-size: 14px; font-weight: 500; color: #3a3a3c; }
+        .sidebar-nav li:hover { background-color: rgba(52, 199, 89, 0.12); }
+        .sidebar-nav li.active { background-color: var(--eco-green); color: #ffffff; font-weight: 600; box-shadow: 0 2px 8px rgba(52, 199, 89, 0.3); }
+        .sidebar-nav .icon { margin-right: 12px; font-size: 16px; }
+
+        .main-content { flex: 1; overflow-y: auto; padding: 30px; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-header h1 { margin: 0; font-size: 24px; font-weight: 700; }
+        .card { background: var(--card-bg); backdrop-filter: blur(10px); border-radius: var(--ios-radius); padding: 22px; margin-bottom: 22px; box-shadow: var(--ios-shadow); border: 1px solid var(--border-light); }
+        .card-title { font-size: 17px; font-weight: 600; margin-top: 0; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .btn { background-color: var(--primary-blue); color: #ffffff; border: none; padding: 8px 12px; font-size: 13px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 4px; }
+        .btn:hover { opacity: 0.88; }
+        .btn:disabled, .btn-disabled { background-color: #d1d1d6 !important; color: #8e8e93 !important; cursor: not-allowed !important; opacity: 0.7; }
+        .btn-success { background-color: var(--eco-green); }
+        .btn-secondary { background-color: #8e8e93; }
+        .btn-danger { background-color: #ff3b30; }
+        .btn-warning { background-color: #ff9500; color: #fff; }
+        .form-control { width: 100%; padding: 8px 12px; border: 1px solid #c7c7cc; border-radius: 8px; font-size: 13px; background-color: rgba(255, 255, 255, 0.9); outline: none; }
+        .form-control:focus { border-color: var(--primary-blue); }
+        .table-container { overflow-x: auto; max-height: 580px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border-light); vertical-align: middle; white-space: normal; word-break: break-word; }
+        th { position: sticky; top: 0; background-color: rgba(242, 242, 247, 0.95); color: var(--text-sub); font-weight: 600; font-size: 12px; text-transform: uppercase; z-index: 2; white-space: nowrap; }
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { color: var(--primary-blue); }
+        tbody tr:hover { background-color: rgba(235, 245, 240, 0.4); }
+        .img-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-light); }
+        .badge-status { padding: 4px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; display: inline-block; white-space: nowrap; }
+        .pagination-container { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; margin-top: 10px; border-top: 1px solid var(--border-light); font-size: 13px; flex-wrap: wrap; gap: 10px; }
+        .pagination-nav { display: flex; gap: 4px; align-items: center; }
+        .page-btn { padding: 5px 10px; border: 1px solid #c7c7cc; border-radius: 6px; background: #fff; cursor: pointer; font-size: 12px; }
+        .page-btn:hover { background-color: #e5e5ea; }
+        .page-btn.active { background-color: var(--primary-blue); color: #fff; border-color: var(--primary-blue); font-weight: 600; }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 15px; }
+        .status-card { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-light); background: #fff; font-size: 11.5px; display: flex; flex-direction: column; gap: 2px; }
+        .status-card .title { font-weight: 600; color: var(--text-sub); }
+        .status-card .num { font-size: 15px; font-weight: 700; color: var(--text-main); }
+        .summary-banner { display: flex; gap: 15px; margin-bottom: 15px; background: #ffffff; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border-light); }
+        .summary-item { flex: 1; text-align: center; }
+        .summary-item .label { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; }
+        .summary-item .val { font-size: 20px; font-weight: 700; }
+        .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 2000; }
+        .modal { background: #ffffff; border-radius: var(--ios-radius); width: 540px; max-width: 90%; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
+        .modal-header { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+        .modal-body .form-group { margin-bottom: 14px; }
+        .modal-body label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #3a3a3c; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        #qrDisplayArea { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; background: #f9f9fb; border-radius: 12px; border: 1px dashed var(--border-light); margin-bottom: 15px; }
+        #qrCodeContainer { padding: 12px; background: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .esg-box { background: #f0fdf4; border: 1px dashed #22c55e; border-radius: 10px; padding: 12px 16px; margin-top: 10px; }
+        .esg-box h4 { margin: 0 0 8px 0; color: #15803d; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+        .esg-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+        /* 消費者模式 */
+        body.consumer-mode { display: block; background: #ffffff; }
+        body.consumer-mode .sidebar { display: none; }
+        body.consumer-mode .main-content { padding: 0; margin: 0; overflow-y: auto; }
+        body.consumer-mode .page-header { display: none; }
+        body.consumer-mode .page { max-width: 600px; margin: 0 auto; padding: 20px; }
+        body.consumer-mode #page6 .card { background: #ffffff; box-shadow: none; border: none; text-align: center; padding: 20px 10px; }
+        body.consumer-mode #frontQueryInput, body.consumer-mode button[onclick="queryDPP()"] { display: none; }
+        body.consumer-mode #dppProductImage { max-width: 200px; height: auto; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        body.consumer-mode #dppResult { text-align: left; }
+
+        /* 載入中提示 */
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.95);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 9999; font-size: 18px; color: var(--text-sub);
+            flex-direction: column; gap: 10px;
+        }
+
+        /* 語言切換按鈕 */
+        .lang-switcher {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            z-index: 1500;
+            display: flex;
+            gap: 6px;
+        }
+        .lang-btn {
+            background: #fff;
+            border: 1px solid #c7c7cc;
+            color: #1c1c1e;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .lang-btn.active {
+            background: var(--primary-blue);
+            color: #fff;
+            border-color: var(--primary-blue);
+        }
+        body.consumer-mode .lang-switcher { display: none; }
+
+        /* 移動端響應式 */
+        .hamburger {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1500;
+            background: #ffffff;
+            border: 1px solid #c7c7cc;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 900;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: -260px;
+                height: 100vh;
+                transition: left 0.3s ease;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            }
+            body.menu-open .sidebar { left: 0; }
+            body.menu-open .overlay { display: block; }
+            .hamburger { display: block; }
+            .main-content { margin-left: 0; padding: 20px 10px; }
+            .page-header h1 { font-size: 18px; }
+            .card { padding: 15px; margin-bottom: 15px; }
+            .summary-banner { flex-direction: column; gap: 8px; padding: 10px; }
+            .status-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+            .table-container { max-height: 400px; }
+            .btn { padding: 6px 10px; font-size: 12px; }
+            .form-control { padding: 6px 10px; font-size: 12px; }
+            .modal { width: 95%; padding: 15px; }
+            .modal-body .form-group { margin-bottom: 10px; }
+            .pagination-container { flex-direction: column; align-items: stretch; gap: 5px; }
+            .pagination-nav { flex-wrap: wrap; justify-content: center; }
+            .page-btn { padding: 4px 8px; font-size: 11px; }
+            body.consumer-mode .hamburger { display: none; }
+            body.consumer-mode .main-content { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 語言切換按鈕 -->
+    <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="zh-TW" onclick="switchLanguage('zh-TW')">繁中</button>
+        <button class="lang-btn" data-lang="en" onclick="switchLanguage('en')">EN</button>
+    </div>
+
+    <!-- 漢堡按鈕 (僅移動端顯示) -->
+    <button class="hamburger" onclick="toggleMenu()">☰</button>
+    <div class="overlay" onclick="closeMenu()"></div>
+
+    <!-- 載入中提示 -->
+    <div id="loadingOverlay">
+        <div data-i18n="loading_text">📦 資料載入中...</div>
+        <button class="btn btn-secondary" onclick="location.reload()" style="display:none;" id="reloadBtn" data-i18n="reload_btn">重新載入</button>
+    </div>
+
+    <!-- 側邊欄 -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 data-i18n="app_title">🍃 循環玻璃瓶裝水<br>數位產品護照管理系統 V_dp_15</h2>
+            <div style="margin-top: 8px; font-size: 11px; color: var(--text-sub);" data-i18n="version_info">修訂版本時間：20260908</div>
+            <div style="margin-top: 10px;">
+                <label style="font-size: 12px; color: var(--text-sub);" data-i18n="current_role">當前切換身份：</label>
+                <select id="userRoleSelect" class="form-control" style="margin-top: 4px;" onchange="changeRole()">
+                    <option value="Admin" data-i18n="role_admin">Admin (系統管理員)</option>
+                    <option value="OD" data-i18n="role_od">OD (訂單管理員)</option>
+                    <option value="QA" data-i18n="role_qa">QA (品質保證員)</option>
+                    <option value="OP" data-i18n="role_op">OP (生產線操作員)</option>
+                    <option value="WH" data-i18n="role_wh">WH (倉庫管理員)</option>
+                </select>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li id="nav-page1" class="active" onclick="switchPage('page1', event)"><span class="icon">📊</span><span class="text" data-i18n="nav_dashboard">系統總覽 (Dashboard)</span></li>
+                <li id="nav-page2" onclick="switchPage('page2', event)"><span class="icon">🍾</span><span class="text" data-i18n="nav_bottle">玻璃瓶容器管理</span></li>
+                <li id="nav-page3" onclick="switchPage('page3', event)"><span class="icon">📦</span><span class="text" data-i18n="nav_product">產品 DPP 管理</span></li>
+                <li id="nav-page4" onclick="switchPage('page4', event)"><span class="icon">🔄</span><span class="text" data-i18n="nav_traceability">產品追溯管理</span></li>
+                <li id="nav-page5" onclick="switchPage('page5', event)"><span class="icon">🏭</span><span class="text" data-i18n="nav_batch">灌裝生產批次</span></li>
+                <li id="nav-page6" onclick="switchPage('page6', event)"><span class="icon">📱</span><span class="text" data-i18n="nav_consumer">消費者護照查詢 (Front)</span></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- 主內容區 -->
+    <main class="main-content">
+
+        <!-- 頁面 1：系統總覽 -->
+        <section id="page1" class="page active">
+            <div class="page-header"><h1 data-i18n="page1_title">頁面一：系統總覽 (Dashboard V_dp_15)</h1></div>
+            <div class="card">
+                <div class="card-title" data-i18n="dashboard_data_title">永續數據與展示資料</div>
+                <button class="btn btn-success" onclick="loadDemoData10000()" data-i18n="btn_load_demo">⚡ 重新載入系統預設資料</button>
+            </div>
+            <div class="card">
+                <div class="card-title" data-i18n="dashboard_stats_title">全域 12 種狀態庫存統計總覽</div>
+                <div class="summary-banner">
+                    <div class="summary-item">
+                        <div class="label" data-i18n="label_avail_total">可用物料總數</div>
+                        <div class="val" id="dashAvailCount" style="color:var(--eco-green);">0</div>
+                    </div>
+                    <div class="summary-item" style="border-left:1px solid var(--border-light);">
+                        <div class="label" data-i18n="label_unavail_total">不可用物料總數</div>
+                        <div class="val" id="dashUnavailCount" style="color:#ff3b30;">0</div>
+                    </div>
+                    <div class="summary-item" style="border-left:1px solid var(--border-light);">
+                        <div class="label" data-i18n="label_total_serials">序列號總筆數</div>
+                        <div class="val" id="dashTotalCount" style="color:var(--primary-blue);">0</div>
+                    </div>
+                </div>
+                <div class="status-grid" id="dashStatusGrid"></div>
+            </div>
+            <div class="card">
+                <div class="card-title" data-i18n="dashboard_pie_title">12 種狀態分佈圓餅圖 (Pie Chart)</div>
+                <div style="max-width: 520px; margin: 0 auto; padding: 10px;">
+                    <canvas id="statusPieChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 頁面 2 -->
+        <section id="page2" class="page">
+            <div class="page-header">
+                <h1 data-i18n="page2_title">頁面二：玻璃瓶容器管理</h1>
+                <button class="btn btn-success" onclick="openModal('bottle', 'add')" data-i18n="btn_add_bottle">＋ 新增玻璃瓶型</button>
+            </div>
+            <div class="card">
+                <div class="table-container">
+                    <table id="bottleTable">
+                        <thead><tr>
+                            <th data-i18n="th_image">縮圖</th>
+                            <th data-i18n="th_bottle_code">瓶型代碼</th>
+                            <th data-i18n="th_bottle_name">名稱</th>
+                            <th data-i18n="th_capacity">容量 (ml)</th>
+                            <th data-i18n="th_weight">重量 (g)</th>
+                            <th data-i18n="th_dimensions">尺寸</th>
+                            <th data-i18n="th_max_cycles">最大循環次數</th>
+                            <th data-i18n="th_actions">操作</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 頁面 3：DPP 管理 -->
+        <section id="page3" class="page">
+            <div class="page-header">
+                <h1 data-i18n="page3_title">頁面三：產品 DPP 管理</h1>
+                <button class="btn btn-success" onclick="openModal('product', 'add')" data-i18n="btn_add_product">＋ 新增 DPP 產品</button>
+            </div>
+            <div class="card">
+                <div class="table-container">
+                    <table id="productTable">
+                        <thead><tr>
+                            <th data-i18n="th_image">縮圖</th>
+                            <th data-i18n="th_gtin">GTIN</th>
+                            <th data-i18n="th_product_name">產品名稱</th>
+                            <th data-i18n="th_bottle_code">瓶型代碼</th>
+                            <th data-i18n="th_water_source">水源/產地</th>
+                            <th data-i18n="th_description">產品描述</th>
+                            <th data-i18n="th_esg_total">ESG 總碳足跡</th>
+                            <th data-i18n="th_actions">操作</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 頁面 4：產品追溯管理 -->
+        <section id="page4" class="page">
+            <div class="page-header"><h1 data-i18n="page4_title">頁面四：產品追溯管理 (V_dp_15)</h1></div>
+            <div class="card" style="padding: 16px;">
+                <div class="summary-banner" style="margin-bottom:10px;">
+                    <div class="summary-item">
+                        <div class="label" data-i18n="label_avail_total">✔ 可用物料總數</div>
+                        <div class="val" id="topAvailCount" style="color:var(--eco-green);">0</div>
+                    </div>
+                    <div class="summary-item" style="border-left:1px solid var(--border-light);">
+                        <div class="label" data-i18n="label_unavail_total">✘ 不可用物料總數</div>
+                        <div class="val" id="topUnavailCount" style="color:#ff3b30;">0</div>
+                    </div>
+                    <div class="summary-item" style="border-left:1px solid var(--border-light);">
+                        <div class="label" data-i18n="label_total_serials">總序列號筆數</div>
+                        <div class="val" id="topTotalCount" style="color:var(--primary-blue);">0</div>
+                    </div>
+                </div>
+                <div style="font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;" data-i18n="status_stats_title">12 種生命週期狀態即時統計：</div>
+                <div class="status-grid" id="topStatusGrid"></div>
+            </div>
+            <div class="card">
+                <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap; align-items:center;">
+                    <input type="text" id="searchInput" class="form-control" style="width:250px;" placeholder="搜尋序列號 (如 A00001) 或 GRAI..." data-i18n-placeholder="placeholder_search">
+                    <button class="btn" onclick="searchSerial()" data-i18n="btn_search">🔍 搜尋</button>
+                    <button class="btn btn-secondary" onclick="clearSerialSearch()" data-i18n="btn_clear_search">🧹 清除搜尋</button>
+                    <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:13px; font-weight:600; color:var(--primary-blue);" id="selectedCountText" data-i18n="selected_count">已勾選 0 筆</span>
+                        <button class="btn btn-warning" onclick="openBatchStatusModal()" data-i18n="btn_batch_status">☑️ 批次修改勾選項目狀態</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="serialTable">
+                        <thead>
+                            <tr>
+                                <th style="width:38px; text-align:center;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAllCurrentPage(this)"></th>
+                                <th class="sortable" onclick="sortTable('serials', 0)" data-i18n="th_grai">GRAI 代碼 ⇅</th>
+                                <th data-i18n="th_qr">Digital Link 二維碼</th>
+                                <th class="sortable" onclick="sortTable('serials', 1)" data-i18n="th_serial">序列號 ⇅</th>
+                                <th class="sortable" onclick="sortTable('serials', 2)" data-i18n="th_gtin">GTIN ⇅</th>
+                                <th><span data-i18n="th_status">當前狀態 (12種)</span><br>
+                                    <select id="statusFilterSelect" class="form-control" style="font-size:11px; padding:2px 4px; margin-top:2px;" onchange="applySerialFilters()">
+                                        <option value="" data-i18n="option_all_status">全部狀態 (全選)</option>
+                                        <option value="新庫存" data-i18n="status_new">新庫存</option>
+                                        <option value="已預訂" data-i18n="status_reserved">已預訂</option>
+                                        <option value="生產中" data-i18n="status_in_production">生產中</option>
+                                        <option value="生產不合格" data-i18n="status_prod_fail">生產不合格</option>
+                                        <option value="灌裝完成" data-i18n="status_filled">灌裝完成</option>
+                                        <option value="QA完成可出貨" data-i18n="status_qa_ready">QA完成可出貨</option>
+                                        <option value="通路銷售中" data-i18n="status_on_sale">通路銷售中</option>
+                                        <option value="已回收未清洗" data-i18n="status_recycled_dirty">已回收未清洗</option>
+                                        <option value="清洗完成" data-i18n="status_cleaned">清洗完成</option>
+                                        <option value="QA回收入庫" data-i18n="status_qa_return">QA回收入庫</option>
+                                        <option value="已報廢" data-i18n="status_scrapped">已報廢</option>
+                                        <option value="樣品" data-i18n="status_sample">樣品</option>
+                                    </select>
+                                </th>
+                                <th class="sortable" onclick="sortTable('serials', 9)" data-i18n="th_avail">可用物料 ⇅</th>
+                                <th><span data-i18n="th_area">存放區域</span><br>
+                                    <select id="areaFilterSelect" class="form-control" style="font-size:11px; padding:2px 4px; margin-top:2px;" onchange="applySerialFilters()">
+                                        <option value="" data-i18n="option_all_area">全部區域 (全選)</option>
+                                    </select>
+                                </th>
+                                <th class="sortable" onclick="sortTable('serials', 5)" data-i18n="th_fill_count">灌裝次數 ⇅</th>
+                                <th class="sortable" onclick="sortTable('serials', 6)" data-i18n="th_recycle_count">回收次數 ⇅</th>
+                                <th data-i18n="th_latest_batch">最新批次號</th>
+                                <th style="min-width:140px;" data-i18n="th_update_time">最新狀態改變時間</th>
+                                <th style="min-width:160px;" data-i18n="th_remark">備註標註</th>
+                                <th data-i18n="th_actions">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="pagination-container">
+                    <div id="paginationInfo" style="color:var(--text-sub);" data-i18n="pagination_info">顯示 0 - 0 筆，共 0 筆資料</div>
+                    <div class="pagination-nav">
+                        <button class="page-btn" onclick="goToPage(1)" data-i18n="btn_first_page">« 第一頁</button>
+                        <button class="page-btn" onclick="prevPage()" data-i18n="btn_prev_page">‹ 上一頁</button>
+                        <span id="pageButtons" style="display:inline-flex; gap:2px;"></span>
+                        <button class="page-btn" onclick="nextPage()" data-i18n="btn_next_page">下一頁 ›</button>
+                        <button class="page-btn" onclick="goToPage(totalPages)" data-i18n="btn_last_page">最末頁 »</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 頁面 5：灌裝生產批次 -->
+        <section id="page5" class="page">
+            <div class="page-header">
+                <h1 data-i18n="page5_title">頁面五：灌裝生產批次</h1>
+                <button class="btn btn-success" onclick="openModal('batch', 'add')" data-i18n="btn_add_batch">＋ 新增生產批次</button>
+            </div>
+            <div class="card">
+                <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                    <input type="text" id="batchSearchInput" class="form-control" style="width:280px;" placeholder="搜尋訂單號 (如 ORD-...) 或 客戶名稱..." data-i18n-placeholder="placeholder_batch_search">
+                    <button class="btn" onclick="searchBatchOrder()" data-i18n="btn_search_order">🔍 搜尋訂單</button>
+                    <button class="btn btn-secondary" onclick="clearBatchSearch()" data-i18n="btn_clear_search">🧹 清除搜尋</button>
+                    <select id="batchStatusFilter" class="form-control" style="width:180px;" onchange="filterBatchTable()">
+                        <option value="" data-i18n="option_all_order_status">全部訂單狀態</option>
+                        <option value="草稿" data-i18n="batch_draft">草稿</option>
+                        <option value="新建立" data-i18n="batch_new">新建立</option>
+                        <option value="已推送至生產線" data-i18n="batch_pushed">已推送至生產線</option>
+                        <option value="已完成生產" data-i18n="batch_completed">已完成生產</option>
+                        <option value="異常" data-i18n="batch_abnormal">異常</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table id="batchTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="th_image">圖檔/標籤</th>
+                                <th class="sortable" onclick="sortTable('batches', 0)" data-i18n="th_batch_no">批次號 ⇅</th>
+                                <th class="sortable" onclick="sortTable('batches', 1)" data-i18n="th_order_no">訂單號 ⇅</th>
+                                <th class="sortable" onclick="sortTable('batches', 2)" data-i18n="th_client">客戶名稱 ⇅</th>
+                                <th class="sortable" onclick="sortTable('batches', 7)" data-i18n="th_order_status">訂單狀態 ⇅</th>
+                                <th class="sortable" onclick="sortTable('batches', 8)" data-i18n="th_req_qty">需求預訂數量 ⇅</th>
+                                <th data-i18n="th_gtin">GTIN</th>
+                                <th class="sortable" onclick="sortTable('batches', 4)" data-i18n="th_prod_date">生產日期 ⇅</th>
+                                <th data-i18n="th_order_remark">訂單備註</th>
+                                <th data-i18n="th_sn_download">綁定 SN 包下載</th>
+                                <th data-i18n="th_workflow">管理操作與工作流</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 頁面 6：消費者護照查詢 -->
+        <section id="page6" class="page">
+            <div class="page-header"><h1 data-i18n="page6_title">頁面六：消費者護照查詢 (V_dp_15)</h1></div>
+            <div class="card" style="max-width: 520px; margin: auto; text-align: center;">
+                <h2 data-i18n="dpp_header">🍾 數位產品護照 (DPP)</h2>
+                <input type="text" id="frontQueryInput" class="form-control" value="A00001" style="text-align:center; margin-bottom: 12px;" data-i18n-placeholder="placeholder_serial">
+                <button class="btn btn-success" style="width:100%; justify-content:center;" onclick="queryDPP()" data-i18n="btn_query_passport">📱 查詢護照履歷</button>
+                <div id="dppResult" style="margin-top:20px; text-align:left; display:none;">
+                    <hr style="border:0; border-top:1px solid var(--border-light);">
+                    <div style="text-align:center; margin-bottom: 15px;">
+                        <img id="dppProductImage" src="" alt="產品圖片" style="max-width:200px; height:auto; border-radius:12px; display:none;">
+                    </div>
+                    <p><strong data-i18n="label_product_name">產品名稱：</strong> <span id="dppProdName"></span></p>
+                    <p><strong data-i18n="label_grai">GRAI 代碼：</strong> <span id="dppGrai"></span></p>
+                    <p><strong data-i18n="label_status">瓶子當前狀態：</strong> <span id="dppStatus" style="font-weight:bold; color:var(--primary-blue);"></span></p>
+                    <p><strong data-i18n="label_avail_status">可用物料狀態：</strong> <span id="dppAvail"></span></p>
+                    <p><strong data-i18n="label_location">所在實體區域：</strong> <span id="dppLocation"></span></p>
+                    <p><strong data-i18n="label_cycle_count">循環次數：</strong> <span id="dppCycleCount" style="color:var(--eco-green); font-weight:bold;"></span> 次</p>
+                    <p><strong data-i18n="label_update_time">最新狀態改變時間：</strong> <span id="dppUpdateTime"></span></p>
+                    <p><strong data-i18n="label_history_batch">歷史批次紀錄：</strong> <span id="dppBatch"></span></p>
+                    <p><strong data-i18n="label_remark">備註標記：</strong> <span id="dppRemark"></span></p>
+                    <div class="esg-box">
+                        <h4 data-i18n="esg_title">🌱 ESG 產品碳足跡履歷</h4>
+                        <p style="margin:4px 0; font-size:13px;"><strong data-i18n="label_esg_total">全生命週期總碳排放：</strong> <span id="dppEsgTotal" style="font-size:16px; font-weight:700; color:#15803d;">0.00</span> kgCO₂e / 瓶</p>
+                        <div class="esg-grid" style="font-size:11.5px; color:#166534; margin-top:8px;">
+                            <div>• <span data-i18n="esg_raw">原料與製造</span>：<span id="dppEsgRaw">0</span> kg</div>
+                            <div>• <span data-i18n="esg_fill">灌裝生產</span>：<span id="dppEsgFill">0</span> kg</div>
+                            <div>• <span data-i18n="esg_log">物流運輸</span>：<span id="dppEsgLog">0</span> kg</div>
+                            <div>• <span data-i18n="esg_rec">回收與清洗</span>：<span id="dppEsgRec">0</span> kg</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 通用 Modal 彈窗 -->
+    <div id="modalBackdrop" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header" id="modalTitle" data-i18n="modal_add_title">新增資料</div>
+            <div class="modal-body" id="modalFormBody"></div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-secondary" onclick="closeModal()" data-i18n="btn_cancel">取消</button>
+                <button class="btn btn-success" onclick="saveModalData()" data-i18n="btn_save">儲存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 單筆狀態變更 Modal -->
+    <div id="statusModalBackdrop" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header" data-i18n="status_modal_title">變更瓶子生命週期狀態</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label data-i18n="label_serial">序列號：</label>
+                    <input type="text" id="statusModalSN" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="label_select_status">選擇新狀態 (12種)：</label>
+                    <select id="statusModalSelect" class="form-control" onchange="onStatusSelectChange()">
+                        <option value="新庫存" data-i18n="status_new">新庫存</option>
+                        <option value="已預訂" data-i18n="status_reserved">已預訂</option>
+                        <option value="生產中" data-i18n="status_in_production">生產中</option>
+                        <option value="生產不合格" data-i18n="status_prod_fail">生產不合格</option>
+                        <option value="灌裝完成" data-i18n="status_filled">灌裝完成</option>
+                        <option value="QA完成可出貨" data-i18n="status_qa_ready">QA完成可出貨</option>
+                        <option value="通路銷售中" data-i18n="status_on_sale">通路銷售中</option>
+                        <option value="已回收未清洗" data-i18n="status_recycled_dirty">已回收未清洗</option>
+                        <option value="清洗完成" data-i18n="status_cleaned">清洗完成</option>
+                        <option value="QA回收入庫" data-i18n="status_qa_return">QA回收入庫</option>
+                        <option value="已報廢" data-i18n="status_scrapped">已報廢</option>
+                        <option value="樣品" id="sampleOption" data-i18n="status_sample_admin">樣品 (僅限 QA/Admin)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="label_avail_mark">可用物料標記 (系統自動對應)：</label>
+                    <input type="text" id="statusModalAvailText" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="label_auto_area">自動對應實體區域：</label>
+                    <input type="text" id="statusModalArea" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="label_remark">備註標註：</label>
+                    <textarea id="statusModalRemark" class="form-control" rows="2" placeholder="請輸入備註..." data-i18n-placeholder="placeholder_remark"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeStatusModal()" data-i18n="btn_cancel">取消</button>
+                <button class="btn btn-success" onclick="saveStatusChange()" data-i18n="btn_confirm_update">確認更新</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批次勾選狀態修改 Modal -->
+    <div id="batchStatusModalBackdrop" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header" data-i18n="batch_status_modal_title">☑️ 批次修改已勾選項目狀態</div>
+            <div class="modal-body">
+                <div style="background:#eef2ff; color:#3730a3; padding:10px; border-radius:8px; font-size:12.5px; margin-bottom:12px;">
+                    <strong data-i18n="selected_count_modal">目前已勾選筆數：</strong> <span id="batchModalSelectedCount" style="font-weight:700;">0</span> 筆
+                </div>
+                <div class="form-group">
+                    <label data-i18n="label_select_status">統一變更為新狀態 (12種)：</label>
+                    <select id="batchStatusSelect" class="form-control" onchange="onBatchStatusSelectChange()">
+                        <option value="新庫存" data-i18n="status_new">新庫存</option>
+                        <option value="已預訂" data-i18n="status_reserved">已預訂</option>
+                        <option value="生產中" data-i18n="status_in_production">生產中</option>
+                        <option value="生產不合格" data-i18n="status_prod_fail">生產不合格</option>
+                        <option value="灌裝完成" data-i18n="status_filled">灌裝完成</option>
+                        <option value="QA完成可出貨" data-i18n="status_qa_ready">QA完成可出貨</option>
+                        <option value="通路銷售中" data-i18n="status_on_sale">通路銷售中</option>
+                        <option value="已回收未清洗" data-i18n="status_recycled_dirty">已回收未清洗</option>
+                        <option value="清洗完成" data-i18n="status_cleaned">清洗完成</option>
+                        <option value="QA回收入庫" data-i18n="status_qa_return">QA回收入庫</option>
+                        <option value="已報廢" data-i18n="status_scrapped">已報廢</option>
+                        <option value="樣品" data-i18n="status_sample_admin">樣品 (僅限 QA/Admin)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="label_avail_mark">對應可用物料標記：</label>
+                    <input type="text" id="batchModalAvailText" class="form-control" value="✔ 可用物料" readonly>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="label_auto_area">自動對應實體區域：</label>
+                    <input type="text" id="batchModalArea" class="form-control" value="新物料庫存區" readonly>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="label_batch_remark">覆蓋/新增批次備註標註：</label>
+                    <textarea id="batchModalRemark" class="form-control" rows="2" placeholder="請輸入批次更新備註..." data-i18n-placeholder="placeholder_batch_remark"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeBatchStatusModal()" data-i18n="btn_cancel">取消</button>
+                <button class="btn btn-warning" onclick="saveBatchStatusChange()" data-i18n="btn_execute_batch">⚡ 執行批次一次性修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ESG 碳排放數據設定 Modal -->
+    <div id="esgModalBackdrop" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header" data-i18n="esg_modal_title">🌱 ESG 碳排放環節數據設定</div>
+            <div class="modal-body">
+                <div style="background:#f0fdf4; padding:10px; border-radius:8px; font-size:12px; color:#166534; margin-bottom:12px;" data-i18n="esg_modal_desc">
+                    請輸入產品各生命週期環節之碳排放值（單位：kgCO₂e / 瓶），系統將自動進行加總計算，並連動至 DPP 護照。
+                </div>
+                <input type="hidden" id="esgProductGtin">
+                <div class="form-group">
+                    <label data-i18n="esg_raw_label">1. 原料與容器製造碳排放：</label>
+                    <input type="number" step="0.01" id="esgRaw" class="form-control" value="0.45" oninput="calcEsgTotal()">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="esg_fill_label">2. 灌裝生產與包裝碳排放：</label>
+                    <input type="number" step="0.01" id="esgFill" class="form-control" value="0.12" oninput="calcEsgTotal()">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="esg_log_label">3. 物流運輸與通路配送碳排放：</label>
+                    <input type="number" step="0.01" id="esgLog" class="form-control" value="0.18" oninput="calcEsgTotal()">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="esg_rec_label">4. 回收清洗與循環處置碳排放：</label>
+                    <input type="number" step="0.01" id="esgRec" class="form-control" value="0.05" oninput="calcEsgTotal()">
+                </div>
+                <hr style="border:0; border-top:1px dashed var(--border-light);">
+                <div class="form-group">
+                    <label style="font-size:15px; color:#15803d;" data-i18n="esg_total_label">全生命週期碳足跡總和 (Total Carbon Footprint)：</label>
+                    <input type="text" id="esgTotalVal" class="form-control" style="font-size:18px; font-weight:700; color:#15803d; background:#e8f5e9;" readonly value="0.80 kgCO₂e">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEsgModal()" data-i18n="btn_cancel">取消</button>
+                <button class="btn btn-success" onclick="saveEsgData()" data-i18n="btn_save_esg">💾 儲存 ESG 計算數據</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 二維碼 Modal -->
+    <div id="qrModalBackdrop" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header" data-i18n="qr_modal_title">GS1 Digital Link 二維碼</div>
+            <div class="modal-body">
+                <div id="qrDisplayArea">
+                    <div id="qrCodeContainer"></div>
+                    <div id="qrLinkUrl" style="word-break:break-all; font-size:12px; color:var(--text-sub); margin-top:10px; text-align:center;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeQRModal()" data-i18n="btn_close">關閉</button>
+                <button class="btn btn-success" onclick="downloadQRJpg()" data-i18n="btn_download_jpg">💾 下載 JPG 圖檔</button>
+                <button class="btn" onclick="jumpToPassportFromQR()" data-i18n="btn_view_passport">🔗 檢視消費者護照</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="batchReportFileInput" style="display:none;" accept=".xlsx, .xls" onchange="handleBatchReportUpload(event)">
+
+    <script>
+        // ========== V_dp_15 設定 ==========
+        const BASE_URL = 'https://gleantech.github.io/WaterDPP/WaterDPP/index.html'; // 請改為實際部署網址
+        const DATA_PATH = './data/';
+        const LANGUAGE_PATH = './language/language.xlsx';
+        const DEFAULT_LANG = 'zh-TW';
+        const CURRENT_TIMESTAMP = "20260908";
+        const PAGE_SIZE = 200;
+
+        const statusToAreaMap = {
+            "新庫存": "新物料庫存區",
+            "已預訂": "可灌裝回收物料區",
+            "生產中": "生產線",
+            "生產不合格": "生產線待撿區",
+            "灌裝完成": "成品等待QA質檢區",
+            "QA完成可出貨": "成品可出貨區",
+            "通路銷售中": "市場流通中",
+            "已回收未清洗": "回收暫存區",
+            "清洗完成": "已清洗回收暫存區",
+            "QA回收入庫": "可灌裝回收物料區",
+            "已報廢": "報廢區",
+            "樣品": "樣品留樣區"
+        };
+
+        const statusColorMap = {
+            "新庫存": { bg: "#e3f2fd", color: "#0d47a1" },
+            "已預訂": { bg: "#fff3e0", color: "#e65100" },
+            "生產中": { bg: "#e8eaf6", color: "#1a237e" },
+            "生產不合格": { bg: "#ffebee", color: "#b71c1c" },
+            "灌裝完成": { bg: "#e0f2f1", color: "#004d40" },
+            "QA完成可出貨": { bg: "#e8f5e9", color: "#1b5e20" },
+            "通路銷售中": { bg: "#f3e5f5", color: "#4a148c" },
+            "已回收未清洗": { bg: "#fff8e1", color: "#f57f17" },
+            "清洗完成": { bg: "#e0f7fa", color: "#006064" },
+            "QA回收入庫": { bg: "#c8e6c9", color: "#2e7d32" },
+            "已報廢": { bg: "#efebe9", color: "#3e2723" },
+            "樣品": { bg: "#fce4ec", color: "#880e4f" }
+        };
+
+        const areaColorMap = {
+            "新物料庫存區": { bg: "#e1f5fe", color: "#01579b" },
+            "可灌裝回收物料區": { bg: "#f1f8e9", color: "#33691e" },
+            "生產線": { bg: "#ede7f6", color: "#4a148c" },
+            "生產線待撿區": { bg: "#fbe9e7", color: "#bf360c" },
+            "成品等待QA質檢區": { bg: "#e0f2f1", color: "#004d40" },
+            "成品可出貨區": { bg: "#dcedc8", color: "#1b5e20" },
+            "市場流通中": { bg: "#f3e5f5", color: "#6a1b9a" },
+            "回收暫存區": { bg: "#fffde7", color: "#f57f17" },
+            "已清洗回收暫存區": { bg: "#e0f7fa", color: "#00838f" },
+            "報廢區": { bg: "#d7ccc8", color: "#4e342e" },
+            "樣品留樣區": { bg: "#f8bbd0", color: "#880e4f" }
+        };
+
+        const all12Statuses = [
+            "新庫存", "已預訂", "生產中", "生產不合格", 
+            "灌裝完成", "QA完成可出貨", "通路銷售中", "已回收未清洗", 
+            "清洗完成", "QA回收入庫", "已報廢", "樣品"
+        ];
+
+        const statusKeyMap = {
+            "新庫存": "status_new",
+            "已預訂": "status_reserved",
+            "生產中": "status_in_production",
+            "生產不合格": "status_prod_fail",
+            "灌裝完成": "status_filled",
+            "QA完成可出貨": "status_qa_ready",
+            "通路銷售中": "status_on_sale",
+            "已回收未清洗": "status_recycled_dirty",
+            "清洗完成": "status_cleaned",
+            "QA回收入庫": "status_qa_return",
+            "已報廢": "status_scrapped",
+            "樣品": "status_sample"
+        };
+        const areaKeyMap = {
+            "新物料庫存區": "area_new_inventory",
+            "可灌裝回收物料區": "area_refillable",
+            "生產線": "area_production_line",
+            "生產線待撿區": "area_prod_fail",
+            "成品等待QA質檢區": "area_qa_wait",
+            "成品可出貨區": "area_qa_ready",
+            "市場流通中": "area_market",
+            "回收暫存區": "area_recycle_dirty",
+            "已清洗回收暫存區": "area_cleaned",
+            "報廢區": "area_scrapped",
+            "樣品留樣區": "area_sample"
+        };
+
+        let currentRole = "Admin";
+        let activeUploadBatchNo = "";
+        let selectedSNSet = new Set();
+        let filteredSerials = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let pieChartInstance = null;
+        let sortState = { serials: { col: -1, asc: true }, batches: { col: -1, asc: true } };
+
+        let db = {
+            bottles: [],
+            products: [],
+            batches: [],
+            serials: []
+        };
+
+        let currentActiveSerial = '';
+        let editingSerialIdx = -1;
+
+        // ========== 多語言相關 ==========
+        let translations = {};
+        let currentLang = DEFAULT_LANG;
+
+        function t(key) {
+            return (translations[key] && translations[key][currentLang]) || key;
+        }
+
+        async function loadLanguage(lang) {
+            try {
+                const response = await fetch(LANGUAGE_PATH, { cache: 'no-store' });
+                if (!response.ok) throw new Error('Language file not found');
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                translations = {};
+                for (let i = 1; i < rows.length; i++) {
+                    const r = rows[i];
+                    if (r.length >= 3) {
+                        translations[r[0]] = {
+                            'zh-TW': r[1],
+                            'en': r[2]
+                        };
+                    }
+                }
+                currentLang = lang;
+                applyLanguage(lang);
+            } catch (error) {
+                console.warn('語言檔載入失敗，使用預設繁體中文。', error);
+                currentLang = DEFAULT_LANG;
+                // 不進行翻譯替換，保留 HTML 中原本的繁體中文
+            }
+        }
+
+        function applyLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[key] && translations[key][lang]) {
+                    el.textContent = translations[key][lang];
+                }
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (translations[key] && translations[key][lang]) {
+                    el.placeholder = translations[key][lang];
+                }
+            });
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+            if (typeof renderAll === 'function') {
+                renderAll();
+            }
+        }
+
+        function switchLanguage(lang) {
+            if (lang !== currentLang) {
+                loadLanguage(lang);
+            }
+        }
+
+        // ========== 菜單控制 ==========
+        function toggleMenu() { document.body.classList.toggle('menu-open'); }
+        function closeMenu() { document.body.classList.remove('menu-open'); }
+        function switchPage(pageId, evt) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.sidebar-nav li').forEach(li => li.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            document.getElementById('nav-' + pageId).classList.add('active');
+            if (window.innerWidth <= 768) closeMenu();
+        }
+
+        // ========== 數據加載函數 ==========
+        async function loadXlsxData(filename) {
+            const response = await fetch(DATA_PATH + filename, { cache: 'no-store' });
+            if (!response.ok) throw new Error(`無法載入 ${filename}`);
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            return XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        }
+
+        function parseBottles(rows) {
+            db.bottles = rows.slice(1).map(r => [
+                r[0], r[1], Number(r[2]), Number(r[3]), r[4], Number(r[5]), r[6]
+            ]);
+        }
+
+        function parseProducts(rows) {
+            db.products = rows.slice(1).map(r => [
+                r[0], r[1], r[2], r[3], r[4], r[5],
+                {
+                    raw: Number(r[6]),
+                    fill: Number(r[7]),
+                    log: Number(r[8]),
+                    rec: Number(r[9]),
+                    total: Number(r[10])
+                }
+            ]);
+        }
+
+        function parseBatches(rows) {
+            db.batches = rows.slice(1).map(r => [
+                r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], Number(r[8]), r[9]
+            ]);
+        }
+
+        function parseSerials(rows) {
+            db.serials = rows.slice(1).map(r => {
+                const isAvail = (r[9] === true || r[9] === 'TRUE' || r[9] === 'true' || r[9] === 1 || r[9] === '1');
+                let historyBatches = [];
+                if (r[11] && r[11].toString().trim() !== '') {
+                    historyBatches = r[11].toString().split(',').map(s => s.trim());
+                }
+                while (historyBatches.length < 30) historyBatches.push('');
+                return [
+                    r[0], r[1], r[2], r[3], r[4], Number(r[5]), Number(r[6]), r[7], r[8], isAvail, r[10], historyBatches
+                ];
+            });
+        }
+
+        async function initializeData() {
+            try {
+                const [languagePromise, dataPromise] = [loadLanguage(DEFAULT_LANG), Promise.all([
+                    loadXlsxData('bottles.xlsx'),
+                    loadXlsxData('products.xlsx'),
+                    loadXlsxData('batches.xlsx'),
+                    loadXlsxData('serials.xlsx')
+                ])];
+                const [_, dataResults] = await Promise.all([languagePromise, dataPromise]);
+                parseBottles(dataResults[0]);
+                parseProducts(dataResults[1]);
+                parseBatches(dataResults[2]);
+                parseSerials(dataResults[3]);
+                initAreaFilterOptions();
+                updateSelectedCountUI();
+                document.getElementById('loadingOverlay').style.display = 'none';
+                renderAll();
+                parseUrlParamsAndApplyMode();
+            } catch (error) {
+                console.error('資料載入失敗:', error);
+                const overlay = document.getElementById('loadingOverlay');
+                overlay.innerHTML = `❌ 資料載入失敗：${error.message}`;
+                const reloadBtn = document.getElementById('reloadBtn');
+                if (reloadBtn) reloadBtn.style.display = 'inline-flex';
+            }
+        }
+
+        function initAreaFilterOptions() {
+            const areaSelect = document.getElementById('areaFilterSelect');
+            areaSelect.innerHTML = `<option value="">${t('option_all_area')}</option>`;
+            Object.values(statusToAreaMap).filter((v, i, a) => a.indexOf(v) === i).forEach(area => {
+                const areaKey = areaKeyMap[area] || area;
+                const areaLabel = t(areaKey);
+                areaSelect.innerHTML += `<option value="${area}">${areaLabel}</option>`;
+            });
+        }
+
+        // ========== 以下函數包含動態翻譯 ==========
+        function changeRole() {
+            currentRole = document.getElementById('userRoleSelect').value;
+            applySerialFilters();
+            renderBatchTable(db.batches);
+        }
+
+        function checkIsAvailable(status) { return (status === "新庫存" || status === "QA回收入庫"); }
+
+        function calculateStatistics() {
+            const counts = {};
+            all12Statuses.forEach(st => counts[st] = 0);
+            let availTotal = 0, unavailTotal = 0;
+            db.serials.forEach(s => {
+                counts[s[3]]++;
+                s[9] ? availTotal++ : unavailTotal++;
+            });
+            return { statusCounts: counts, availTotal, unavailTotal, grandTotal: db.serials.length };
+        }
+
+        function renderStatisticsUI() {
+            const stats = calculateStatistics();
+            document.getElementById('dashAvailCount').innerText = stats.availTotal.toLocaleString();
+            document.getElementById('dashUnavailCount').innerText = stats.unavailTotal.toLocaleString();
+            document.getElementById('dashTotalCount').innerText = stats.grandTotal.toLocaleString();
+            document.getElementById('topAvailCount').innerText = stats.availTotal.toLocaleString();
+            document.getElementById('topUnavailCount').innerText = stats.unavailTotal.toLocaleString();
+            document.getElementById('topTotalCount').innerText = stats.grandTotal.toLocaleString();
+
+            const gridHTML = all12Statuses.map(st => {
+                const colorObj = statusColorMap[st];
+                const statusKey = statusKeyMap[st] || st;
+                const statusLabel = t(statusKey);
+                return `<div class="status-card" style="background-color:${colorObj.bg}; border-color:rgba(0,0,0,0.06);">
+                    <div class="title" style="color:${colorObj.color};">${statusLabel}</div>
+                    <div class="num" style="color:${colorObj.color};">${(stats.statusCounts[st] || 0).toLocaleString()}</div>
+                </div>`;
+            }).join('');
+            document.getElementById('dashStatusGrid').innerHTML = gridHTML;
+            document.getElementById('topStatusGrid').innerHTML = gridHTML;
+            renderPieChart(stats.statusCounts);
+        }
+
+        function renderPieChart(statusCounts) {
+            const ctx = document.getElementById('statusPieChart');
+            if(!ctx) return;
+            const labels = all12Statuses.map(st => t(statusKeyMap[st] || st));
+            const data = labels.map((_, i) => statusCounts[all12Statuses[i]] || 0);
+            const bgColors = all12Statuses.map(st => statusColorMap[st].bg);
+            const borderColors = all12Statuses.map(st => statusColorMap[st].color);
+            if (pieChartInstance) pieChartInstance.destroy();
+            pieChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: { labels, datasets: [{ data, backgroundColor: bgColors, borderColor: borderColors, borderWidth: 1.5 }] },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a,b)=>a+b,0);
+                                    const pct = total > 0 ? ((val/total)*100).toFixed(1) : 0;
+                                    return `${context.label}: ${val.toLocaleString()} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderAll() {
+            renderStatisticsUI();
+            renderBottleTable();
+            renderProductTable();
+            renderBatchTable(db.batches);
+            applySerialFilters();
+        }
+
+        function renderBottleTable() {
+            const tbody = document.querySelector('#bottleTable tbody');
+            tbody.innerHTML = db.bottles.map((b, idx) => `
+                <tr>
+                    <td><img src="${b[6] || ''}" class="img-thumb"></td>
+                    <td>${b[0]}</td><td>${b[1]}</td><td>${b[2]}</td><td>${b[3]}</td><td>${b[4]}</td><td>${b[5]}</td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="openModal('bottle', 'edit', ${idx})">${t('btn_edit')}</button>
+                        <button class="btn btn-danger" onclick="deleteItem('bottles', ${idx})">${t('btn_delete')}</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderProductTable() {
+            const tbody = document.querySelector('#productTable tbody');
+            tbody.innerHTML = db.products.map((p, idx) => {
+                let esgObj = p[6] || { total: 0.80 };
+                return `
+                <tr>
+                    <td><img src="${p[5] || ''}" class="img-thumb"></td>
+                    <td>${p[0]}</td><td><strong>${p[1]}</strong></td><td>${p[2]}</td><td>${p[3]}</td><td>${p[4]}</td>
+                    <td><span style="font-weight:700; color:#15803d;">${(esgObj.total || 0).toFixed(2)} kgCO₂e</span></td>
+                    <td>
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn btn-success" style="font-size:11px;" onclick="openEsgModal(${idx})">${t('esg_modal_title')}</button>
+                            <button class="btn btn-secondary" style="font-size:11px;" onclick="openModal('product', 'edit', ${idx})">${t('btn_edit')}</button>
+                            <button class="btn btn-danger" style="font-size:11px;" onclick="deleteItem('products', ${idx})">${t('btn_delete')}</button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        function applySerialFilters() {
+            const statusFilter = document.getElementById('statusFilterSelect').value;
+            const areaFilter = document.getElementById('areaFilterSelect').value;
+            const keyword = document.getElementById('searchInput').value.trim().toUpperCase();
+            filteredSerials = db.serials.filter(s => {
+                const matchStatus = !statusFilter || s[3] === statusFilter;
+                const matchArea = !areaFilter || s[4] === areaFilter;
+                const matchKeyword = !keyword || (s[1].toUpperCase().includes(keyword) || s[0].toUpperCase().includes(keyword));
+                return matchStatus && matchArea && matchKeyword;
+            });
+            currentPage = 1;
+            renderPagedSerialsTable();
+        }
+
+        function renderPagedSerialsTable() {
+            totalPages = Math.ceil(filteredSerials.length / PAGE_SIZE) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            const startIndex = (currentPage - 1) * PAGE_SIZE;
+            const pageData = filteredSerials.slice(startIndex, startIndex + PAGE_SIZE);
+            const sBody = document.querySelector('#serialTable tbody');
+            sBody.innerHTML = pageData.map((s) => {
+                let realIdx = db.serials.findIndex(item => item[1] === s[1]);
+                let sn = s[1];
+                let isChecked = selectedSNSet.has(sn) ? 'checked' : '';
+                let availBadge = s[9] ? `<span class="badge-status" style="background:#e8f5e9; color:#2e7d32;">${t('label_avail_yes')}</span>` : `<span class="badge-status" style="background:#ffebee; color:#c62828;">${t('label_avail_no')}</span>`;
+                let stStyle = statusColorMap[s[3]] || { bg: '#e3f2fd', color: '#0d47a1' };
+                let statusLabel = t(statusKeyMap[s[3]] || s[3]);
+                let statusBadge = `<span class="badge-status" style="background:${stStyle.bg}; color:${stStyle.color};">${statusLabel}</span>`;
+                let arStyle = areaColorMap[s[4]] || { bg: '#f3e5f5', color: '#4a148c' };
+                let areaLabel = t(areaKeyMap[s[4]] || s[4]);
+                let areaBadge = `<span class="badge-status" style="background:${arStyle.bg}; color:${arStyle.color};">${areaLabel}</span>`;
+                return `
+                <tr>
+                    <td style="text-align:center;"><input type="checkbox" class="sn-checkbox" data-sn="${sn}" ${isChecked} onchange="toggleSelectSN('${sn}', this.checked)"></td>
+                    <td>${s[0]}</td>
+                    <td><button class="btn btn-success" style="font-size:11px; padding:3px 6px;" onclick="generateDigitalLinkQR('${s[2]}', '${sn}')">${t('btn_qr_generate')}</button></td>
+                    <td><strong>${sn}</strong></td>
+                    <td>${s[2]}</td>
+                    <td>${statusBadge}</td>
+                    <td>${availBadge}</td>
+                    <td>${areaBadge}</td>
+                    <td>${s[5]}</td>
+                    <td>${s[6]}</td>
+                    <td>${s[7]}</td>
+                    <td><small>${s[10] || ''}</small></td>
+                    <td><small>${s[8] || ''}</small></td>
+                    <td><button class="btn btn-secondary" style="font-size:11px; padding:3px 6px;" onclick="openStatusModal(${realIdx})">${t('btn_status_change')}</button></td>
+                </tr>
+            `}).join('');
+            updatePaginationControls(startIndex, pageData.length);
+            updateSelectAllCheckboxState(pageData);
+        }
+
+        function toggleSelectSN(sn, isChecked) {
+            isChecked ? selectedSNSet.add(sn) : selectedSNSet.delete(sn);
+            updateSelectedCountUI();
+        }
+
+        function toggleSelectAllCurrentPage(masterCb) {
+            const startIndex = (currentPage - 1) * PAGE_SIZE;
+            const pageData = filteredSerials.slice(startIndex, startIndex + PAGE_SIZE);
+            pageData.forEach(s => {
+                if (masterCb.checked) selectedSNSet.add(s[1]);
+                else selectedSNSet.delete(s[1]);
+            });
+            document.querySelectorAll('.sn-checkbox').forEach(cb => cb.checked = masterCb.checked);
+            updateSelectedCountUI();
+        }
+
+        function updateSelectAllCheckboxState(pageData) {
+            const masterCb = document.getElementById('selectAllCheckbox');
+            if (!masterCb || pageData.length === 0) return;
+            masterCb.checked = pageData.every(s => selectedSNSet.has(s[1]));
+        }
+
+        function updateSelectedCountUI() {
+            const count = selectedSNSet.size;
+            document.getElementById('selectedCountText').innerText = t('selected_count').replace('{0}', count.toLocaleString());
+        }
+
+        function openBatchStatusModal() {
+            if (selectedSNSet.size === 0) {
+                alert(t('msg_no_selection'));
+                return;
+            }
+            document.getElementById('batchModalSelectedCount').innerText = selectedSNSet.size.toLocaleString();
+            onBatchStatusSelectChange();
+            document.getElementById('batchStatusModalBackdrop').style.display = 'flex';
+        }
+
+        function closeBatchStatusModal() { document.getElementById('batchStatusModalBackdrop').style.display = 'none'; }
+
+        function onBatchStatusSelectChange() {
+            const st = document.getElementById('batchStatusSelect').value;
+            document.getElementById('batchModalArea').value = statusToAreaMap[st] || "";
+            document.getElementById('batchModalAvailText').value = checkIsAvailable(st) ? t('label_avail_yes') : t('label_avail_no');
+        }
+
+        function saveBatchStatusChange() {
+            const newStatus = document.getElementById('batchStatusSelect').value;
+            const newArea = document.getElementById('batchModalArea').value;
+            const newRemark = document.getElementById('batchModalRemark').value.trim();
+            if (newStatus === "樣品" && currentRole !== "Admin" && currentRole !== "QA") {
+                alert(t('msg_permission_denied_sample'));
+                return;
+            }
+            if (!confirm(t('msg_confirm_batch_update').replace('{0}', selectedSNSet.size.toLocaleString()).replace('{1}', newStatus))) return;
+            let updatedCount = 0;
+            db.serials.forEach(s => {
+                if (selectedSNSet.has(s[1])) {
+                    s[3] = newStatus;
+                    s[4] = newArea;
+                    s[9] = checkIsAvailable(newStatus);
+                    s[10] = CURRENT_TIMESTAMP;
+                    if (newRemark !== "") s[8] = newRemark;
+                    updatedCount++;
+                }
+            });
+            closeBatchStatusModal();
+            selectedSNSet.clear();
+            renderAll();
+            alert(t('msg_batch_update_success').replace('{0}', updatedCount.toLocaleString()));
+        }
+
+        function updatePaginationControls(startIndex, countOnPage) {
+            const totalCount = filteredSerials.length;
+            const startNum = totalCount === 0 ? 0 : startIndex + 1;
+            const endNum = startIndex + countOnPage;
+            document.getElementById('paginationInfo').innerText = t('pagination_info').replace('{0}', startNum.toLocaleString()).replace('{1}', endNum.toLocaleString()).replace('{2}', totalCount.toLocaleString());
+            const btnContainer = document.getElementById('pageButtons');
+            btnContainer.innerHTML = '';
+            let startP = Math.max(1, currentPage - 2);
+            let endP = Math.min(totalPages, startP + 4);
+            if (endP - startP < 4) startP = Math.max(1, endP - 4);
+            for (let i = startP; i <= endP; i++) {
+                const btn = document.createElement('button');
+                btn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                btn.innerText = i;
+                btn.onclick = () => goToPage(i);
+                btnContainer.appendChild(btn);
+            }
+        }
+
+        function goToPage(p) { if (p >= 1 && p <= totalPages) { currentPage = p; renderPagedSerialsTable(); } }
+        function prevPage() { if (currentPage > 1) { currentPage--; renderPagedSerialsTable(); } }
+        function nextPage() { if (currentPage < totalPages) { currentPage++; renderPagedSerialsTable(); } }
+
+        function searchSerial() { applySerialFilters(); }
+        function clearSerialSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilterSelect').value = '';
+            document.getElementById('areaFilterSelect').value = '';
+            applySerialFilters();
+        }
+
+        function renderBatchTable(data) {
+            const btBody = document.querySelector('#batchTable tbody');
+            btBody.innerHTML = data.map((bt) => {
+                let realIdx = db.batches.findIndex(item => item[0] === bt[0]);
+                let status = bt[7];
+                let canSendProd = (status === "新建立");
+                let canUploadReport = (status === "已推送至生產線");
+                let canDetail = (status === "已推送至生產線" || status === "已完成生產");
+                let snXlsxLink = (status === "已推送至生產線" || status === "已完成生產") ? `<a href="#" onclick="downloadBatchSNPackage('${bt[0]}')">📥 ${t('btn_sn_download')}</a>` : `<span style="color:var(--text-sub); font-size:11px;">${t('sn_not_generated')}</span>`;
+                return `
+                <tr>
+                    <td><img src="${bt[6] || ''}" class="img-thumb"></td>
+                    <td><strong>${bt[0]}</strong></td>
+                    <td>${bt[1]}</td>
+                    <td>${bt[2]}</td>
+                    <td><span class="badge-status" style="background:#fff3e0; color:#e65100;">${t('batch_' + status) || status}</span></td>
+                    <td><strong>${bt[8] || 0}</strong> 瓶</td>
+                    <td>${bt[3]}</td>
+                    <td>${bt[4]}</td>
+                    <td><small>${bt[9] || ''}</small></td>
+                    <td>${snXlsxLink}</td>
+                    <td>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                            <button class="btn ${canSendProd ? 'btn-success' : 'btn-disabled'}" ${canSendProd ? '' : 'disabled'} onclick="sendToProduction(${realIdx})">${t('btn_send_prod')}</button>
+                            <button class="btn ${canDetail ? '' : 'btn-disabled'}" ${canDetail ? '' : 'disabled'} onclick="queryBatchSNDetail(${realIdx})">${t('btn_query_detail')}</button>
+                            <button class="btn btn-secondary ${canUploadReport ? '' : 'btn-disabled'}" ${canUploadReport ? '' : 'disabled'} onclick="triggerUploadReport('${bt[0]}')">${t('btn_upload_report')}</button>
+                            <button class="btn btn-secondary" style="font-size:11px;" onclick="openModal('batch', 'edit', ${realIdx})">${t('btn_edit')}</button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        function searchBatchOrder() {
+            const q = document.getElementById('batchSearchInput').value.trim().toUpperCase();
+            if(!q) return;
+            const res = db.batches.filter(b => b[1].toUpperCase().includes(q) || b[2].includes(q) || b[0].toUpperCase().includes(q));
+            renderBatchTable(res);
+        }
+
+        function clearBatchSearch() {
+            document.getElementById('batchSearchInput').value = '';
+            document.getElementById('batchStatusFilter').value = '';
+            renderBatchTable(db.batches);
+        }
+
+        function filterBatchTable() {
+            const st = document.getElementById('batchStatusFilter').value;
+            if(!st) { renderBatchTable(db.batches); return; }
+            renderBatchTable(db.batches.filter(b => b[7] === st));
+        }
+
+        function openStatusModal(index) {
+            editingSerialIdx = index;
+            const item = db.serials[index];
+            document.getElementById('statusModalSN').value = item[1];
+            document.getElementById('statusModalSelect').value = item[3];
+            document.getElementById('statusModalArea').value = item[4];
+            document.getElementById('statusModalRemark').value = item[8] || '';
+            document.getElementById('statusModalAvailText').value = item[9] ? t('label_avail_yes') : t('label_avail_no');
+            document.getElementById('sampleOption').disabled = !(currentRole === "Admin" || currentRole === "QA");
+            document.getElementById('statusModalBackdrop').style.display = 'flex';
+        }
+
+        function onStatusSelectChange() {
+            const st = document.getElementById('statusModalSelect').value;
+            document.getElementById('statusModalArea').value = statusToAreaMap[st] || "";
+            document.getElementById('statusModalAvailText').value = checkIsAvailable(st) ? t('label_avail_yes') : t('label_avail_no');
+        }
+
+        function closeStatusModal() { document.getElementById('statusModalBackdrop').style.display = 'none'; }
+
+        function saveStatusChange() {
+            if (editingSerialIdx < 0) return;
+            const newStatus = document.getElementById('statusModalSelect').value;
+            const newArea = document.getElementById('statusModalArea').value;
+            const newRemark = document.getElementById('statusModalRemark').value;
+            if (newStatus === "樣品" && currentRole !== "Admin" && currentRole !== "QA") {
+                alert(t('msg_permission_denied_sample'));
+                return;
+            }
+            db.serials[editingSerialIdx][3] = newStatus;
+            db.serials[editingSerialIdx][4] = newArea;
+            db.serials[editingSerialIdx][8] = newRemark;
+            db.serials[editingSerialIdx][9] = checkIsAvailable(newStatus);
+            db.serials[editingSerialIdx][10] = CURRENT_TIMESTAMP;
+            closeStatusModal();
+            renderAll();
+            alert(t('msg_status_updated'));
+        }
+
+        let editingEsgProductIndex = -1;
+        function openEsgModal(prodIndex) {
+            editingEsgProductIndex = prodIndex;
+            const prod = db.products[prodIndex];
+            const esg = prod[6] || { raw: 0.45, fill: 0.12, log: 0.18, rec: 0.05, total: 0.80 };
+            document.getElementById('esgProductGtin').value = prod[0];
+            document.getElementById('esgRaw').value = esg.raw || 0;
+            document.getElementById('esgFill').value = esg.fill || 0;
+            document.getElementById('esgLog').value = esg.log || 0;
+            document.getElementById('esgRec').value = esg.rec || 0;
+            calcEsgTotal();
+            document.getElementById('esgModalBackdrop').style.display = 'flex';
+        }
+
+        function closeEsgModal() { document.getElementById('esgModalBackdrop').style.display = 'none'; }
+
+        function calcEsgTotal() {
+            const raw = parseFloat(document.getElementById('esgRaw').value) || 0;
+            const fill = parseFloat(document.getElementById('esgFill').value) || 0;
+            const log = parseFloat(document.getElementById('esgLog').value) || 0;
+            const rec = parseFloat(document.getElementById('esgRec').value) || 0;
+            document.getElementById('esgTotalVal').value = `${(raw+fill+log+rec).toFixed(2)} kgCO₂e`;
+        }
+
+        function saveEsgData() {
+            if (editingEsgProductIndex < 0) return;
+            const raw = parseFloat(document.getElementById('esgRaw').value) || 0;
+            const fill = parseFloat(document.getElementById('esgFill').value) || 0;
+            const log = parseFloat(document.getElementById('esgLog').value) || 0;
+            const rec = parseFloat(document.getElementById('esgRec').value) || 0;
+            db.products[editingEsgProductIndex][6] = { raw, fill, log, rec, total: raw+fill+log+rec };
+            closeEsgModal();
+            renderAll();
+            alert(t('msg_esg_updated'));
+        }
+
+        function generateDigitalLinkQR(gtin, serial) {
+            currentActiveSerial = serial;
+            const digitalLinkUrl = `${BASE_URL}?gtin=${gtin}&serial=${serial}`;
+            const container = document.getElementById('qrCodeContainer');
+            container.innerHTML = '';
+            new QRCode(container, {
+                text: digitalLinkUrl,
+                width: 170, height: 170,
+                colorDark: "#000000", colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            document.getElementById('qrLinkUrl').innerText = digitalLinkUrl;
+            document.getElementById('qrModalBackdrop').style.display = 'flex';
+        }
+
+        function closeQRModal() { document.getElementById('qrModalBackdrop').style.display = 'none'; }
+
+        function downloadQRJpg() {
+            const qrCanvas = document.querySelector('#qrCodeContainer canvas');
+            if(!qrCanvas) { alert(t('msg_qr_generating')); return; }
+            const link = document.createElement('a');
+            link.download = `DigitalLink_${currentActiveSerial}.jpg`;
+            link.href = qrCanvas.toDataURL("image/jpeg", 0.95);
+            link.click();
+        }
+
+        function jumpToPassportFromQR() {
+            closeQRModal();
+            document.getElementById('frontQueryInput').value = currentActiveSerial;
+            switchPage('page6');
+            queryDPP();
+        }
+
+        let currentModalTarget = '', currentModalMode = 'add', currentEditIndex = -1;
+
+        function openModal(target, mode, index = -1) {
+            currentModalTarget = target;
+            currentModalMode = mode;
+            currentEditIndex = index;
+            const title = (mode === 'add' ? t('modal_add_title') : t('btn_edit')) + ' ' +
+                (target === 'bottle' ? t('nav_bottle') : target === 'product' ? t('nav_product') : t('nav_batch'));
+            document.getElementById('modalTitle').innerText = title;
+            let fieldsHTML = '';
+            let item = mode === 'edit' ? (target === 'bottle' ? db.bottles[index] : target === 'product' ? db.products[index] : db.batches[index]) : [];
+            if (target === 'batch') {
+                const totalClean = db.serials.filter(s => s[3] === "QA回收入庫").length;
+                const totalNew = db.serials.filter(s => s[3] === "新庫存").length;
+                const totalReserved = db.serials.filter(s => s[3] === "已預訂").length;
+                const totalAvailable = totalClean + totalNew;
+                fieldsHTML = `
+                    <div style="background:#e8f5e9; padding:10px; border-radius:8px; font-size:12px; margin-bottom:12px;">
+                        <strong>${t('available_stock_title')}</strong><br>
+                        • ${t('qa_return_stock')}：${totalClean}<br>
+                        • ${t('new_stock')}：${totalNew}<br>
+                        • ${t('reserved_stock')}：${totalReserved}<br>
+                        👉 ${t('total_available')}：<strong>${totalAvailable}</strong>
+                    </div>
+                    <div class="form-group"><label>${t('label_batch_no')}</label><input type="text" id="m_f0" class="form-control" value="${item[0]||'BATCH-'+Date.now().toString().slice(-6)}"></div>
+                    <div class="form-group"><label>${t('label_order_no')}</label><input type="text" id="m_f1" class="form-control" value="${item[1]||'ORD-2026-099'}"></div>
+                    <div class="form-group"><label>${t('label_client_name')}</label><input type="text" id="m_f2" class="form-control" value="${item[2]||'台鐵便當/餐飲部'}"></div>
+                    <div class="form-group"><label>${t('label_req_qty')}</label><input type="number" id="m_f8" class="form-control" value="${item[8]||50}"></div>
+                    <div class="form-group"><label>${t('label_gtin')}</label><input type="text" id="m_f3" class="form-control" value="${item[3]||'04712345678901'}"></div>
+                    <div class="form-group"><label>${t('label_prod_date')}</label><input type="date" id="m_f4" class="form-control" value="${item[4]||'2026-08-14'}"></div>
+                    <div class="form-group"><label>${t('label_exp_date')}</label><input type="date" id="m_f5" class="form-control" value="${item[5]||'2027-08-14'}"></div>
+                    <div class="form-group"><label>${t('label_order_remark')}</label><textarea id="m_f9" class="form-control" rows="2">${item[9]||''}</textarea></div>
+                    <div class="form-group"><label>${t('label_batch_image')}</label><input type="file" id="m_img" class="form-control" accept="image/*"></div>
+                `;
+                document.getElementById('modalFooter').innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeModal()">${t('btn_cancel')}</button>
+                    <button class="btn btn-secondary" onclick="saveBatchOrder('草稿')">${t('btn_save_draft')}</button>
+                    <button class="btn btn-success" onclick="saveBatchOrder('新建立')">${t('btn_confirm_new_batch')}</button>
+                `;
+            } else if (target === 'bottle') {
+                fieldsHTML = `
+                    <div class="form-group"><label>${t('label_bottle_code')}</label><input type="text" id="m_f0" class="form-control" value="${item[0]||''}"></div>
+                    <div class="form-group"><label>${t('label_name')}</label><input type="text" id="m_f1" class="form-control" value="${item[1]||''}"></div>
+                    <div class="form-group"><label>${t('label_capacity')}</label><input type="number" id="m_f2" class="form-control" value="${item[2]||''}"></div>
+                    <div class="form-group"><label>${t('label_weight')}</label><input type="number" id="m_f3" class="form-control" value="${item[3]||''}"></div>
+                    <div class="form-group"><label>${t('label_dimensions')}</label><input type="text" id="m_f4" class="form-control" value="${item[4]||''}"></div>
+                    <div class="form-group"><label>${t('label_max_cycles')}</label><input type="number" id="m_f5" class="form-control" value="${item[5]||''}"></div>
+                    <div class="form-group"><label>${t('label_image')}</label><input type="file" id="m_img" class="form-control" accept="image/*"></div>
+                `;
+                document.getElementById('modalFooter').innerHTML = `<button class="btn btn-secondary" onclick="closeModal()">${t('btn_cancel')}</button><button class="btn btn-success" onclick="saveModalData()">${t('btn_save')}</button>`;
+            } else if (target === 'product') {
+                fieldsHTML = `
+                    <div class="form-group"><label>${t('th_gtin')}</label><input type="text" id="m_f0" class="form-control" value="${item[0]||''}"></div>
+                    <div class="form-group"><label>${t('label_product_name')}</label><input type="text" id="m_f1" class="form-control" value="${item[1]||''}"></div>
+                    <div class="form-group"><label>${t('label_bottle_code')}</label><input type="text" id="m_f2" class="form-control" value="${item[2]||''}"></div>
+                    <div class="form-group"><label>${t('label_water_source')}</label><input type="text" id="m_f3" class="form-control" value="${item[3]||''}"></div>
+                    <div class="form-group"><label>${t('label_description')}</label><input type="text" id="m_f4" class="form-control" value="${item[4]||''}"></div>
+                    <div class="form-group"><label>${t('label_image')}</label><input type="file" id="m_img" class="form-control" accept="image/*"></div>
+                `;
+                document.getElementById('modalFooter').innerHTML = `<button class="btn btn-secondary" onclick="closeModal()">${t('btn_cancel')}</button><button class="btn btn-success" onclick="saveModalData()">${t('btn_save')}</button>`;
+            }
+            document.getElementById('modalFormBody').innerHTML = fieldsHTML;
+            document.getElementById('modalBackdrop').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('modalBackdrop').style.display = 'none'; }
+
+        function saveBatchOrder(targetStatus) {
+            const batchNo = document.getElementById('m_f0').value.trim();
+            const orderNo = document.getElementById('m_f1').value.trim();
+            const clientName = document.getElementById('m_f2').value.trim();
+            const reqQty = Number(document.getElementById('m_f8').value);
+            const gtin = document.getElementById('m_f3').value.trim();
+            const prodDate = document.getElementById('m_f4').value;
+            const expDate = document.getElementById('m_f5').value;
+            const remark = document.getElementById('m_f9').value;
+            if(!batchNo || !orderNo || !reqQty) { alert(t('msg_fill_required')); return; }
+            const cleanSerials = db.serials.filter(s => s[3] === "QA回收入庫");
+            const newSerials = db.serials.filter(s => s[3] === "新庫存");
+            const totalAvailable = cleanSerials.length + newSerials.length;
+            if (targetStatus === "新建立") {
+                if (totalAvailable < reqQty) {
+                    alert(t('msg_insufficient_stock').replace('{0}', reqQty - totalAvailable));
+                    return;
+                }
+                let remainingToReserve = reqQty;
+                for (let s of cleanSerials) {
+                    if (remainingToReserve <= 0) break;
+                    s[3] = "已預訂"; s[4] = statusToAreaMap["已預訂"]; s[9] = false; s[10] = CURRENT_TIMESTAMP; s[7] = batchNo;
+                    remainingToReserve--;
+                }
+                if (remainingToReserve > 0) {
+                    for (let s of newSerials) {
+                        if (remainingToReserve <= 0) break;
+                        s[3] = "已預訂"; s[4] = statusToAreaMap["已預訂"]; s[9] = false; s[10] = CURRENT_TIMESTAMP; s[7] = batchNo;
+                        remainingToReserve--;
+                    }
+                }
+                alert(t('msg_order_created').replace('{0}', reqQty));
+            } else {
+                alert(t('msg_order_draft'));
+            }
+            const batchRow = [batchNo, orderNo, clientName, gtin, prodDate, expDate, "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=100", targetStatus, reqQty, remark];
+            if (currentModalMode === 'add') db.batches.push(batchRow); else db.batches[currentEditIndex] = batchRow;
+            closeModal();
+            renderAll();
+        }
+
+        function saveModalData() {
+            const dbKey = currentModalTarget === 'bottle' ? 'bottles' : 'products';
+            let row = [];
+            if (currentModalTarget === 'bottle') {
+                row = [document.getElementById('m_f0').value, document.getElementById('m_f1').value, Number(document.getElementById('m_f2').value), Number(document.getElementById('m_f3').value), document.getElementById('m_f4').value, Number(document.getElementById('m_f5').value), "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=100"];
+            } else {
+                const existingEsg = (currentModalMode === 'edit' && db.products[currentEditIndex]) ? db.products[currentEditIndex][6] : { raw: 0.45, fill: 0.12, log: 0.18, rec: 0.05, total: 0.80 };
+                row = [document.getElementById('m_f0').value, document.getElementById('m_f1').value, document.getElementById('m_f2').value, document.getElementById('m_f3').value, document.getElementById('m_f4').value, "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=100", existingEsg];
+            }
+            if (currentModalMode === 'add') db[dbKey].push(row); else db[dbKey][currentEditIndex] = row;
+            closeModal();
+            renderAll();
+        }
+
+        function deleteItem(type, index) {
+            if (confirm(t('msg_confirm_delete'))) {
+                db[type].splice(index, 1);
+                renderAll();
+            }
+        }
+
+        function sendToProduction(batchIdx) {
+            const b = db.batches[batchIdx];
+            if (b[7] !== "新建立") { alert(t('msg_invalid_order_status')); return; }
+            if (confirm(t('msg_confirm_send_production').replace('{0}', b[1]).replace('{1}', b[0]))) {
+                const targetSerials = db.serials.filter(s => s[7] === b[0] && s[3] === "已預訂");
+                targetSerials.forEach(s => {
+                    s[3] = "生產中"; s[4] = statusToAreaMap["生產中"]; s[9] = false; s[10] = CURRENT_TIMESTAMP;
+                });
+                b[7] = "已推送至生產線";
+                renderAll();
+                alert(t('msg_production_sent').replace('{0}', targetSerials.length));
+                downloadBatchSNPackage(b[0]);
+            }
+        }
+
+        function downloadBatchSNPackage(batchNo) {
+            const list = db.serials.filter(s => s[7] === batchNo);
+            if (list.length === 0) { alert(t('msg_batch_no_serial')); return; }
+            const exportData = list.map(s => ({
+                "GRAI代碼": s[0], "序列號": s[1], "GTIN": s[2], "當前狀態": s[3], "存放區域": s[4], "生產批次": s[7], "最新狀態改變時間": s[10]
+            }));
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "SN_Package");
+            XLSX.writeFile(wb, `Batch_${batchNo}_SN_Package.xlsx`);
+        }
+
+        function queryBatchSNDetail(batchIdx) {
+            const b = db.batches[batchIdx];
+            const st = b[7];
+            let msg = '';
+            if (st === "新建立") msg = t('msg_order_detail_new').replace('{0}', b[1]).replace('{1}', b[8]);
+            else if (st === "草稿") msg = t('msg_order_detail_draft').replace('{0}', b[1]);
+            else if (st === "異常") msg = t('msg_order_detail_abnormal').replace('{0}', b[1]);
+            else if (st === "已推送至生產線" || st === "已完成生產") {
+                const list = db.serials.filter(s => s[7] === b[0]);
+                const cleanList = list.filter(s => s[4] === "可灌裝回收物料區" || s[8].includes("回收"));
+                const newList = list.filter(s => !cleanList.includes(s));
+                msg = t('msg_order_detail_prod').replace('{0}', b[0]).replace('{1}', newList.length).replace('{2}', cleanList.length).replace('{3}', list.length);
+            }
+            alert(msg);
+        }
+
+        function triggerUploadReport(batchNo) {
+            activeUploadBatchNo = batchNo;
+            document.getElementById('batchReportFileInput').click();
+        }
+
+        function handleBatchReportUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const batchSerials = db.serials.filter(s => s[7] === activeUploadBatchNo && (s[3] === "生產中" || s[3] === "已預訂"));
+                if (batchSerials.length === 0) {
+                    const targetAll = db.serials.filter(s => s[7] === activeUploadBatchNo);
+                    simulateReportProcessing(targetAll);
+                } else {
+                    simulateReportProcessing(batchSerials);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
+
+        function simulateReportProcessing(serialList) {
+            let pass=0, fail=0, unused=0, sample=0, scrap=0;
+            serialList.forEach((s, idx) => {
+                let mod = idx % 20;
+                s[10] = CURRENT_TIMESTAMP;
+                if (mod === 18) { s[3]="生產不合格"; s[4]=statusToAreaMap["生產不合格"]; s[9]=false; fail++; }
+                else if (mod === 19) { s[3]="已報廢"; s[4]=statusToAreaMap["已報廢"]; s[8]="生產中報廢"; s[9]=false; scrap++; }
+                else if (mod === 17) { s[3]="樣品"; s[4]=statusToAreaMap["樣品"]; s[8]="生產中樣品"; s[9]=false; sample++; }
+                else { s[3]="灌裝完成"; s[4]=statusToAreaMap["灌裝完成"]; s[9]=false; s[5]=Number(s[5])+1; if(!s[11]) s[11]=new Array(30).fill(""); s[11][0]=s[7]; pass++; }
+            });
+            const batchObj = db.batches.find(b => b[0] === activeUploadBatchNo);
+            if (batchObj) batchObj[7] = "已完成生產";
+            alert(t('msg_report_processed').replace('{0}', pass).replace('{1}', fail).replace('{2}', unused).replace('{3}', sample).replace('{4}', scrap));
+            renderAll();
+        }
+
+        function queryDPP() {
+            const sn = document.getElementById('frontQueryInput').value.trim().toUpperCase();
+            const item = db.serials.find(s => s[1] === sn || s[0].includes(sn));
+            if (!item) { alert(t('msg_serial_not_found')); return; }
+            const prod = db.products.find(p => p[0] === item[2]);
+            const productImage = document.getElementById('dppProductImage');
+            if (prod && prod[5]) {
+                productImage.src = prod[5];
+                productImage.style.display = 'block';
+            } else {
+                productImage.style.display = 'none';
+            }
+            document.getElementById('dppProdName').innerText = prod ? prod[1] : t('unknown_product');
+            document.getElementById('dppGrai').innerText = item[0];
+            document.getElementById('dppStatus').innerText = t(statusKeyMap[item[3]] || item[3]);
+            document.getElementById('dppAvail').innerHTML = item[9] ? `<span style="color:green;">${t('label_avail_yes')}</span>` : `<span style="color:red;">${t('label_avail_no')}</span>`;
+            document.getElementById('dppLocation').innerText = t(areaKeyMap[item[4]] || item[4]);
+            document.getElementById('dppCycleCount').innerText = item[5];
+            document.getElementById('dppUpdateTime').innerText = item[10] || CURRENT_TIMESTAMP;
+            document.getElementById('dppBatch').innerText = item[7] || 'N/A';
+            document.getElementById('dppRemark').innerText = item[8] || t('no_special_remark');
+            const esg = (prod && prod[6]) ? prod[6] : { raw:0.45, fill:0.12, log:0.18, rec:0.05, total:0.80 };
+            document.getElementById('dppEsgTotal').innerText = (esg.total||0).toFixed(2);
+            document.getElementById('dppEsgRaw').innerText = (esg.raw||0).toFixed(2);
+            document.getElementById('dppEsgFill').innerText = (esg.fill||0).toFixed(2);
+            document.getElementById('dppEsgLog').innerText = (esg.log||0).toFixed(2);
+            document.getElementById('dppEsgRec').innerText = (esg.rec||0).toFixed(2);
+            document.getElementById('dppResult').style.display = 'block';
+        }
+
+        function compareVal(a, b, dir) {
+            if (typeof a === 'number' && typeof b === 'number') return (a - b) * dir;
+            if (typeof a === 'boolean' && typeof b === 'boolean') return ((a?1:0) - (b?1:0)) * dir;
+            return String(a ?? '').localeCompare(String(b ?? ''), 'zh-Hant') * dir;
+        }
+
+        function sortTable(type, colIndex) {
+            const state = sortState[type];
+            if (state.col === colIndex) state.asc = !state.asc; else { state.col = colIndex; state.asc = true; }
+            const dir = state.asc ? 1 : -1;
+            if (type === 'serials') {
+                filteredSerials.sort((a,b) => compareVal(a[colIndex], b[colIndex], dir));
+                currentPage = 1;
+                renderPagedSerialsTable();
+            } else if (type === 'batches') {
+                db.batches.sort((a,b) => compareVal(a[colIndex], b[colIndex], dir));
+                renderBatchTable(db.batches);
+            }
+        }
+
+        function parseUrlParamsAndApplyMode() {
+            const params = new URLSearchParams(window.location.search);
+            const gtin = params.get('gtin');
+            const serial = params.get('serial');
+            if (gtin && serial) {
+                document.body.classList.add('consumer-mode');
+                switchPage('page6');
+                document.getElementById('frontQueryInput').value = serial;
+                queryDPP();
+            }
+        }
+
+        function loadDemoData10000() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('reloadBtn').style.display = 'none';
+            initializeData();
+        }
+
+        window.onload = function() {
+            initializeData();
+        };
+    </script>
+</body>
+</html>
