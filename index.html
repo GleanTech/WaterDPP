@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>循環玻璃瓶裝水數位產品護照管理系統 V_dp_15 (20260908)</title>
+    <title>循環玻璃瓶裝水數位產品護照管理系統V_dp_16 (20260909const DATA_PATH = './data/';)</title>
     <!-- 引入 QR Code、SheetJS 與 Chart.js 函式庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -86,9 +86,19 @@
         .esg-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 
         /* 消費者模式 */
-        body.consumer-mode { display: block; background: #ffffff; }
+        body.consumer-mode {
+    display: block;
+    background: #ffffff;
+    height: auto !important;
+    min-height: 100vh;
+    overflow: auto !important;
+}
         body.consumer-mode .sidebar { display: none; }
-        body.consumer-mode .main-content { padding: 0; margin: 0; overflow-y: auto; }
+       body.consumer-mode .main-content {
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+}
         body.consumer-mode .page-header { display: none; }
         body.consumer-mode .page { max-width: 600px; margin: 0 auto; padding: 20px; }
         body.consumer-mode #page6 .card { background: #ffffff; box-shadow: none; border: none; text-align: center; padding: 20px 10px; }
@@ -339,9 +349,13 @@
             </div>
             <div class="card">
                 <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap; align-items:center;">
-                    <input type="text" id="searchInput" class="form-control" style="width:250px;" placeholder="搜尋序列號 (如 A00001) 或 GRAI..." data-i18n-placeholder="placeholder_search">
-                    <button class="btn" onclick="searchSerial()" data-i18n="btn_search">🔍 搜尋</button>
-                    <button class="btn btn-secondary" onclick="clearSerialSearch()" data-i18n="btn_clear_search">🧹 清除搜尋</button>
+                    <input type="text" id="searchInput" class="form-control" style="width:200px;" placeholder="搜尋序列號或 GRAI" data-i18n-placeholder="search_placeholder">
+<select id="searchType" class="form-control" style="width:150px;" onchange="applySerialFilters()">
+    <option value="serial" data-i18n="search_type_serial">序列號或GRAI</option>
+    <option value="batch" data-i18n="search_type_batch">批次</option>
+</select>
+<button class="btn" onclick="applySerialFilters()" data-i18n="btn_search">🔍 搜尋</button>
+<button class="btn btn-secondary" onclick="clearSerialSearch()" data-i18n="btn_clear_search">🧹 清除搜尋</button>
                     <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
                         <span style="font-size:13px; font-weight:600; color:var(--primary-blue);" id="selectedCountText" data-i18n="selected_count">已勾選 0 筆</span>
                         <button class="btn btn-warning" onclick="openBatchStatusModal()" data-i18n="btn_batch_status">☑️ 批次修改勾選項目狀態</button>
@@ -385,6 +399,7 @@
                                 <th style="min-width:140px;" data-i18n="th_update_time">最新狀態改變時間</th>
                                 <th style="min-width:160px;" data-i18n="th_remark">備註標註</th>
                                 <th data-i18n="th_actions">操作</th>
+<th data-i18n="th_qa_report">QA報告下載</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -428,7 +443,7 @@
                         <thead>
                             <tr>
                                 <th data-i18n="th_image">圖檔/標籤</th>
-                                <th class="sortable" onclick="sortTable('batches', 0)" data-i18n="th_batch_no">批次號 ⇅</th>
+                                <th class="sortable" onclick="sortBatchNo()" data-i18n="th_latest_batch">最新批次號 ⇅</th>
                                 <th class="sortable" onclick="sortTable('batches', 1)" data-i18n="th_order_no">訂單號 ⇅</th>
                                 <th class="sortable" onclick="sortTable('batches', 2)" data-i18n="th_client">客戶名稱 ⇅</th>
                                 <th class="sortable" onclick="sortTable('batches', 7)" data-i18n="th_order_status">訂單狀態 ⇅</th>
@@ -436,6 +451,7 @@
                                 <th data-i18n="th_gtin">GTIN</th>
                                 <th class="sortable" onclick="sortTable('batches', 4)" data-i18n="th_prod_date">生產日期 ⇅</th>
                                 <th data-i18n="th_order_remark">訂單備註</th>
+<th data-i18n="th_qa_report_batch">QA報告下載</th>
                                 <th data-i18n="th_sn_download">綁定 SN 包下載</th>
                                 <th data-i18n="th_workflow">管理操作與工作流</th>
                             </tr>
@@ -467,6 +483,10 @@
                     <p><strong data-i18n="label_update_time">最新狀態改變時間：</strong> <span id="dppUpdateTime"></span></p>
                     <p><strong data-i18n="label_history_batch">歷史批次紀錄：</strong> <span id="dppBatch"></span></p>
                     <p><strong data-i18n="label_remark">備註標記：</strong> <span id="dppRemark"></span></p>
+<p><strong data-i18n="scan_time">掃碼時間：</strong> <span id="dppScanTime"></span></p>
+<p><strong data-i18n="production_date">生產日期：</strong> <span id="dppProductionDate"></span></p>
+<p><strong data-i18n="expiry_date">產品效期：</strong> <span id="dppExpiryDate"></span></p>
+<p><strong data-i18n="qa_report">QA報告：</strong> <span id="dppQaReport"></span></p>
                     <div class="esg-box">
                         <h4 data-i18n="esg_title">🌱 ESG 產品碳足跡履歷</h4>
                         <p style="margin:4px 0; font-size:13px;"><strong data-i18n="label_esg_total">全生命週期總碳排放：</strong> <span id="dppEsgTotal" style="font-size:16px; font-weight:700; color:#15803d;">0.00</span> kgCO₂e / 瓶</p>
@@ -648,6 +668,7 @@
         // ========== V_dp_15 設定 ==========
         const BASE_URL = 'https://gleantech.github.io/WaterDPP/WaterDPP/index.html'; // 請改為實際部署網址
         const DATA_PATH = './data/';
+        const REPORTS_PATH = './reports/';
         const LANGUAGE_PATH = './language/language.xlsx';
         const DEFAULT_LANG = 'zh-TW';
         const CURRENT_TIMESTAMP = "20260908";
@@ -872,7 +893,67 @@
                 ];
             });
         }
+// ===== V_dp_16 新增：QA 報告相關函數 =====
+const QA_REPORT_ALLOWED_STATUSES = ["QA完成可出貨", "通路銷售中", "樣品"];
 
+function getBatchByNo(batchNo) {
+    return db.batches.find(b => b[0] === batchNo);
+}
+
+function getReportFileName(batchNo, batchRecord) {
+    if (batchRecord && batchRecord[10] && batchRecord[10].trim() !== '') {
+        return batchRecord[10].trim();
+    }
+    return `QA_${batchNo}.pdf`;
+}
+
+async function checkReportExists(fileName) {
+    try {
+        const response = await fetch(REPORTS_PATH + fileName, { method: 'HEAD' });
+        return response.ok;
+    } catch (e) {
+        return false;
+    }
+}
+
+async function downloadQAReport(batchNo) {
+    const batchRecord = getBatchByNo(batchNo);
+    if (!batchRecord) {
+        alert(t('no_qa_report_or_not_uploaded'));
+        return;
+    }
+    const fileName = getReportFileName(batchNo, batchRecord);
+    const exists = await checkReportExists(fileName);
+    if (!exists) {
+        alert(t('report_not_uploaded'));
+        return;
+    }
+    window.open(REPORTS_PATH + fileName, '_blank');
+}
+
+function getQaReportCell(serial) {
+    const status = serial[3];
+    if (!QA_REPORT_ALLOWED_STATUSES.includes(status)) {
+        return '<span style="color:var(--text-sub);">' + t('no_qa_report') + '</span>';
+    }
+    const batchNo = serial[7];
+    const batchRecord = getBatchByNo(batchNo);
+    if (!batchRecord) {
+        return '<span style="color:var(--text-sub);">' + t('no_qa_report_or_not_uploaded') + '</span>';
+    }
+    const fileName = getReportFileName(batchNo, batchRecord);
+    return '<a href="#" onclick="downloadQAReport(\'' + batchNo + '\'); return false;" data-i18n="qa_report_download">' + fileName + '</a>';
+}
+
+function getBatchQaReportCell(batch) {
+    const status = batch[7];
+    if (status !== '已完成生產') {
+        return '<span style="color:var(--text-sub);">' + t('no_qa_report') + '</span>';
+    }
+    const batchNo = batch[0];
+    const fileName = getReportFileName(batchNo, batch);
+    return '<a href="#" onclick="downloadQAReport(\'' + batchNo + '\'); return false;">' + fileName + '</a>';
+}
         async function initializeData() {
             try {
                 const [languagePromise, dataPromise] = [loadLanguage(DEFAULT_LANG), Promise.all([
@@ -1040,44 +1121,44 @@
         }
 
         function renderPagedSerialsTable() {
-            totalPages = Math.ceil(filteredSerials.length / PAGE_SIZE) || 1;
-            if (currentPage > totalPages) currentPage = totalPages;
-            const startIndex = (currentPage - 1) * PAGE_SIZE;
-            const pageData = filteredSerials.slice(startIndex, startIndex + PAGE_SIZE);
-            const sBody = document.querySelector('#serialTable tbody');
-            sBody.innerHTML = pageData.map((s) => {
-                let realIdx = db.serials.findIndex(item => item[1] === s[1]);
-                let sn = s[1];
-                let isChecked = selectedSNSet.has(sn) ? 'checked' : '';
-                let availBadge = s[9] ? `<span class="badge-status" style="background:#e8f5e9; color:#2e7d32;">${t('label_avail_yes')}</span>` : `<span class="badge-status" style="background:#ffebee; color:#c62828;">${t('label_avail_no')}</span>`;
-                let stStyle = statusColorMap[s[3]] || { bg: '#e3f2fd', color: '#0d47a1' };
-                let statusLabel = t(statusKeyMap[s[3]] || s[3]);
-                let statusBadge = `<span class="badge-status" style="background:${stStyle.bg}; color:${stStyle.color};">${statusLabel}</span>`;
-                let arStyle = areaColorMap[s[4]] || { bg: '#f3e5f5', color: '#4a148c' };
-                let areaLabel = t(areaKeyMap[s[4]] || s[4]);
-                let areaBadge = `<span class="badge-status" style="background:${arStyle.bg}; color:${arStyle.color};">${areaLabel}</span>`;
-                return `
-                <tr>
-                    <td style="text-align:center;"><input type="checkbox" class="sn-checkbox" data-sn="${sn}" ${isChecked} onchange="toggleSelectSN('${sn}', this.checked)"></td>
-                    <td>${s[0]}</td>
-                    <td><button class="btn btn-success" style="font-size:11px; padding:3px 6px;" onclick="generateDigitalLinkQR('${s[2]}', '${sn}')">${t('btn_qr_generate')}</button></td>
-                    <td><strong>${sn}</strong></td>
-                    <td>${s[2]}</td>
-                    <td>${statusBadge}</td>
-                    <td>${availBadge}</td>
-                    <td>${areaBadge}</td>
-                    <td>${s[5]}</td>
-                    <td>${s[6]}</td>
-                    <td>${s[7]}</td>
-                    <td><small>${s[10] || ''}</small></td>
-                    <td><small>${s[8] || ''}</small></td>
-                    <td><button class="btn btn-secondary" style="font-size:11px; padding:3px 6px;" onclick="openStatusModal(${realIdx})">${t('btn_status_change')}</button></td>
-                </tr>
-            `}).join('');
-            updatePaginationControls(startIndex, pageData.length);
-            updateSelectAllCheckboxState(pageData);
-        }
-
+    totalPages = Math.ceil(filteredSerials.length / PAGE_SIZE) || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    const pageData = filteredSerials.slice(startIndex, startIndex + PAGE_SIZE);
+    const sBody = document.querySelector('#serialTable tbody');
+    sBody.innerHTML = pageData.map((s) => {
+        let realIdx = db.serials.findIndex(item => item[1] === s[1]);
+        let sn = s[1];
+        let isChecked = selectedSNSet.has(sn) ? 'checked' : '';
+        let availBadge = s[9] ? `<span class="badge-status" style="background:#e8f5e9; color:#2e7d32;">${t('label_avail_yes')}</span>` : `<span class="badge-status" style="background:#ffebee; color:#c62828;">${t('label_avail_no')}</span>`;
+        let stStyle = statusColorMap[s[3]] || { bg: '#e3f2fd', color: '#0d47a1' };
+        let statusLabel = t(statusKeyMap[s[3]] || s[3]);
+        let statusBadge = `<span class="badge-status" style="background:${stStyle.bg}; color:${stStyle.color};">${statusLabel}</span>`;
+        let arStyle = areaColorMap[s[4]] || { bg: '#f3e5f5', color: '#4a148c' };
+        let areaLabel = t(areaKeyMap[s[4]] || s[4]);
+        let areaBadge = `<span class="badge-status" style="background:${arStyle.bg}; color:${arStyle.color};">${areaLabel}</span>`;
+        let qaReportCell = getQaReportCell(s);
+        return `<tr>
+            <td style="text-align:center;"><input type="checkbox" class="sn-checkbox" data-sn="${sn}" ${isChecked} onchange="toggleSelectSN('${sn}', this.checked)"></td>
+            <td>${s[0]}</td>
+            <td><button class="btn btn-success" style="font-size:11px; padding:3px 6px;" onclick="generateDigitalLinkQR('${s[2]}', '${sn}')">${t('btn_qr_generate')}</button></td>
+            <td><strong>${sn}</strong></td>
+            <td>${s[2]}</td>
+            <td>${statusBadge}</td>
+            <td>${availBadge}</td>
+            <td>${areaBadge}</td>
+            <td>${s[5]}</td>
+            <td>${s[6]}</td>
+            <td>${s[7]}</td>
+            <td><small>${s[10] || ''}</small></td>
+            <td><small>${s[8] || ''}</small></td>
+            <td><button class="btn btn-secondary" style="font-size:11px; padding:3px 6px;" onclick="openStatusModal(${realIdx})">${t('btn_status_change')}</button></td>
+            <td>${qaReportCell}</td>
+        </tr>`;
+    }).join('');
+    updatePaginationControls(startIndex, pageData.length);
+    updateSelectAllCheckboxState(pageData);
+}
         function toggleSelectSN(sn, isChecked) {
             isChecked ? selectedSNSet.add(sn) : selectedSNSet.delete(sn);
             updateSelectedCountUI();
@@ -1181,37 +1262,43 @@
         }
 
         function renderBatchTable(data) {
-            const btBody = document.querySelector('#batchTable tbody');
-            btBody.innerHTML = data.map((bt) => {
-                let realIdx = db.batches.findIndex(item => item[0] === bt[0]);
-                let status = bt[7];
-                let canSendProd = (status === "新建立");
-                let canUploadReport = (status === "已推送至生產線");
-                let canDetail = (status === "已推送至生產線" || status === "已完成生產");
-                let snXlsxLink = (status === "已推送至生產線" || status === "已完成生產") ? `<a href="#" onclick="downloadBatchSNPackage('${bt[0]}')">📥 ${t('btn_sn_download')}</a>` : `<span style="color:var(--text-sub); font-size:11px;">${t('sn_not_generated')}</span>`;
-                return `
-                <tr>
-                    <td><img src="${bt[6] || ''}" class="img-thumb"></td>
-                    <td><strong>${bt[0]}</strong></td>
-                    <td>${bt[1]}</td>
-                    <td>${bt[2]}</td>
-                    <td><span class="badge-status" style="background:#fff3e0; color:#e65100;">${t('batch_' + status) || status}</span></td>
-                    <td><strong>${bt[8] || 0}</strong> 瓶</td>
-                    <td>${bt[3]}</td>
-                    <td>${bt[4]}</td>
-                    <td><small>${bt[9] || ''}</small></td>
-                    <td>${snXlsxLink}</td>
-                    <td>
-                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                            <button class="btn ${canSendProd ? 'btn-success' : 'btn-disabled'}" ${canSendProd ? '' : 'disabled'} onclick="sendToProduction(${realIdx})">${t('btn_send_prod')}</button>
-                            <button class="btn ${canDetail ? '' : 'btn-disabled'}" ${canDetail ? '' : 'disabled'} onclick="queryBatchSNDetail(${realIdx})">${t('btn_query_detail')}</button>
-                            <button class="btn btn-secondary ${canUploadReport ? '' : 'btn-disabled'}" ${canUploadReport ? '' : 'disabled'} onclick="triggerUploadReport('${bt[0]}')">${t('btn_upload_report')}</button>
-                            <button class="btn btn-secondary" style="font-size:11px;" onclick="openModal('batch', 'edit', ${realIdx})">${t('btn_edit')}</button>
-                        </div>
-                    </td>
-                </tr>
-            `}).join('');
-        }
+    const btBody = document.querySelector('#batchTable tbody');
+    btBody.innerHTML = data.map((bt) => {
+        let realIdx = db.batches.findIndex(item => item[0] === bt[0]);
+        let status = bt[7];
+        let canSendProd = (status === "新建立");
+        let canUploadReport = (status === "已推送至生產線");
+        let canDetail = (status === "已推送至生產線" || status === "已完成生產");
+        let snXlsxLink = (status === "已推送至生產線" || status === "已完成生產") 
+            ? `<a href="#" onclick="downloadBatchSNPackage('${bt[0]}')">📥 ${t('btn_sn_download')}</a>` 
+            : `<span style="color:var(--text-sub); font-size:11px;">${t('sn_not_generated')}</span>`;
+        let qaReportCell = getBatchQaReportCell(bt);
+        return `
+        <tr>
+            <td><img src="${bt[6] || ''}" class="img-thumb"></td>
+            <td><strong>${bt[0]}</strong></td>
+            <td>${bt[1]}</td>
+            <td>${bt[2]}</td>
+            <td><span class="badge-status" style="background:#fff3e0; color:#e65100;">${t('batch_' + status) || status}</span></td>
+            <td><strong>${bt[8] || 0}</strong> 瓶</td>
+            <td>${bt[3]}</td>
+            <td>${bt[4]}</td>
+            <td><small>${bt[9] || ''}</small></td>
+            <td>${qaReportCell}</td>
+            <td>${snXlsxLink}</td>
+            <td>
+                <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                    <button class="btn ${canSendProd ? 'btn-success' : 'btn-disabled'}" ${canSendProd ? '' : 'disabled'} onclick="sendToProduction(${realIdx})">${t('btn_send_prod')}</button>
+                    <button class="btn ${canDetail ? '' : 'btn-disabled'}" ${canDetail ? '' : 'disabled'} onclick="queryBatchSNDetail(${realIdx})">${t('btn_query_detail')}</button>
+                    <button class="btn btn-secondary ${canUploadReport ? '' : 'btn-disabled'}" ${canUploadReport ? '' : 'disabled'} onclick="triggerUploadReport('${bt[0]}')">${t('btn_upload_report')}</button>
+                    <button class="btn btn-warning" onclick="alert(t('upload_simulation_msg'))">${t('btn_upload_qa_report')}</button>
+                    <button class="btn btn-secondary" style="font-size:11px;" onclick="openModal('batch', 'edit', ${realIdx})">${t('btn_edit')}</button>
+                </div>
+            </td>
+        </tr>
+        `;
+    }).join('');
+}
 
         function searchBatchOrder() {
             const q = document.getElementById('batchSearchInput').value.trim().toUpperCase();
@@ -1573,6 +1660,36 @@
             document.getElementById('dppUpdateTime').innerText = item[10] || CURRENT_TIMESTAMP;
             document.getElementById('dppBatch').innerText = item[7] || 'N/A';
             document.getElementById('dppRemark').innerText = item[8] || t('no_special_remark');
+// V_dp_16 新增
+const scanTime = new Date();
+const pad = (num) => String(num).padStart(2, '0');
+const scanTimeStr = scanTime.getFullYear() + '-' + pad(scanTime.getMonth()+1) + '-' + pad(scanTime.getDate()) + ' ' + pad(scanTime.getHours()) + ':' + pad(scanTime.getMinutes()) + ':' + pad(scanTime.getSeconds());
+document.getElementById('dppScanTime').innerText = scanTimeStr;
+
+const batchNo = item[7];
+const batch = getBatchByNo(batchNo);
+if (QA_REPORT_ALLOWED_STATUSES.includes(item[3]) && batch) {
+    const prodDate = batch[4];
+    document.getElementById('dppProductionDate').innerText = prodDate;
+    const expiryDate = new Date(prodDate);
+    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+    const expStr = expiryDate.getFullYear() + '-' + pad(expiryDate.getMonth()+1) + '-' + pad(expiryDate.getDate());
+    document.getElementById('dppExpiryDate').innerText = expStr;
+} else {
+    document.getElementById('dppProductionDate').innerText = t('non_sale_no_prod_date');
+    document.getElementById('dppExpiryDate').innerText = t('no_prod_date_no_expiry');
+}
+
+if (QA_REPORT_ALLOWED_STATUSES.includes(item[3])) {
+    if (batch) {
+        const fileName = getReportFileName(batchNo, batch);
+        document.getElementById('dppQaReport').innerHTML = '<a href="#" onclick="downloadQAReport(\'' + batchNo + '\'); return false;">' + fileName + '</a>';
+    } else {
+        document.getElementById('dppQaReport').innerText = t('no_qa_report_or_not_uploaded');
+    }
+} else {
+    document.getElementById('dppQaReport').innerText = t('non_sale_no_qa_report');
+}
             const esg = (prod && prod[6]) ? prod[6] : { raw:0.45, fill:0.12, log:0.18, rec:0.05, total:0.80 };
             document.getElementById('dppEsgTotal').innerText = (esg.total||0).toFixed(2);
             document.getElementById('dppEsgRaw').innerText = (esg.raw||0).toFixed(2);
@@ -1587,7 +1704,18 @@
             if (typeof a === 'boolean' && typeof b === 'boolean') return ((a?1:0) - (b?1:0)) * dir;
             return String(a ?? '').localeCompare(String(b ?? ''), 'zh-Hant') * dir;
         }
-
+let batchSortDesc = true;
+function sortBatchNo() {
+    batchSortDesc = !batchSortDesc;
+    const dir = batchSortDesc ? -1 : 1;
+    filteredSerials.sort((a, b) => {
+        const aDate = a[7] ? a[7].slice(-8) : '';
+        const bDate = b[7] ? b[7].slice(-8) : '';
+        return aDate.localeCompare(bDate) * dir;
+    });
+    currentPage = 1;
+    renderPagedSerialsTable();
+}
         function sortTable(type, colIndex) {
             const state = sortState[type];
             if (state.col === colIndex) state.asc = !state.asc; else { state.col = colIndex; state.asc = true; }
